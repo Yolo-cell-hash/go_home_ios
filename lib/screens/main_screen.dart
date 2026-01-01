@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+import 'package:godrej_home/screens/home_screen.dart';
+
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
 
@@ -21,7 +23,7 @@ class _MainScreenState extends State<MainScreen> {
           child: Column(
             children: [
               Container(
-                padding: EdgeInsets.symmetric(vertical: 40.0, horizontal: 60.0),
+                padding: EdgeInsets.symmetric(vertical: 60.0, horizontal: 60.0),
                 height: 300.0,
                 width: double.infinity,
                 decoration: BoxDecoration(color: theme.primaryColor),
@@ -29,11 +31,48 @@ class _MainScreenState extends State<MainScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SvgPicture.asset(
-                      'images/Group 133.svg',
-                      color: CupertinoColors.white,
-                      width: 125,
-                      height: 125,
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.pop(context);
+                          },
+                          child: Container(
+                            decoration: BoxDecoration(
+                              border: Border.all(
+                                color: theme.scaffoldBackgroundColor,
+                                width: 2.0,
+                              ),
+                              borderRadius: BorderRadius.circular(20.0),
+                              color: Colors.transparent,
+                            ),
+                            child: Icon(
+                              CupertinoIcons.back,
+                              size: 40.0,
+                              color: theme.scaffoldBackgroundColor,
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 45.0),
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.pushAndRemoveUntil(
+                              context,
+                              MaterialPageRoute(
+                                builder: (BuildContext context) => HomeScreen(),
+                              ),
+                              ModalRoute.withName('/home'),
+                            );
+                          },
+                          child: SvgPicture.asset(
+                            'images/Group 133-cropped.svg',
+                            color: CupertinoColors.white,
+                            width: 125,
+                            height: 125,
+                          ),
+                        ),
+                      ],
                     ),
                     GestureDetector(
                       onTap: () {},
@@ -52,7 +91,61 @@ class _MainScreenState extends State<MainScreen> {
                   ],
                 ),
               ),
-              Container(child: Image.asset('images/morning_poster.png')),
+              Expanded(
+                child: Stack(
+                  children: [
+                    Image.asset(
+                      'images/morning_poster.png',
+                      fit: BoxFit.contain,
+                    ),
+
+                    Positioned(
+                      bottom: 180,
+                      right: 80,
+                      child: Center(
+                        child: CupertinoButton(
+                          color: theme.scaffoldBackgroundColor,
+                          child: Text(
+                            'Setup',
+                            style: TextStyle(
+                              color: theme.primaryColor,
+                              fontFamily: 'GEG',
+                              fontSize: 26,
+                              fontWeight: FontWeight.w500,
+                              letterSpacing: 1.4,
+                            ),
+                          ),
+                          onPressed: () {
+                            print('Setup was clicked');
+                          },
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      bottom: 80,
+                      right: 80,
+                      child: Center(
+                        child: CupertinoButton(
+                          color: theme.scaffoldBackgroundColor,
+                          child: Text(
+                            'Status',
+                            style: TextStyle(
+                              color: theme.primaryColor,
+                              fontFamily: 'GEG',
+                              fontSize: 26,
+                              fontWeight: FontWeight.w500,
+                              letterSpacing: 1.4,
+                            ),
+                          ),
+                          onPressed: () {
+                            print('Setup was clicked');
+                          },
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
