@@ -51,7 +51,7 @@ class _MyAppState extends State<MyApp> {
     '/': (context) => SplashScreen(),
     '/home': (context) => HomeScreen(),
     '/ss2': (context) => SplashScreen2(),
-    '/main': (context) => MainScreen(),
+    '/main': (context) => MainScreen(presetTitle: '', presetImage: ''),
   };
 
   @override

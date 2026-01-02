@@ -24,7 +24,12 @@ class _PresetsPanelState extends State<PresetsPanel> {
             print('Morning Action called');
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => const MainScreen()),
+              MaterialPageRoute(
+                builder: (context) => const MainScreen(
+                  presetTitle: 'Morning',
+                  presetImage: 'morning_poster.png',
+                ),
+              ),
             );
           },
           doesHaveImg: true,
@@ -36,6 +41,15 @@ class _PresetsPanelState extends State<PresetsPanel> {
         OnboardingCard(
           action: () {
             print('Evening Action Called');
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const MainScreen(
+                  presetTitle: 'Evening',
+                  presetImage: 'Mask group-1.png',
+                ),
+              ),
+            );
           },
           doesHaveImg: true,
           theme: widget.theme,
@@ -46,6 +60,15 @@ class _PresetsPanelState extends State<PresetsPanel> {
         OnboardingCard(
           action: () {
             print('Party Action Clicked');
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const MainScreen(
+                  presetTitle: 'Party',
+                  presetImage: 'Mask group.png',
+                ),
+              ),
+            );
           },
           doesHaveImg: true,
           theme: widget.theme,

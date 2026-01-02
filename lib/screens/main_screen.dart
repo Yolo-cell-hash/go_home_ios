@@ -6,7 +6,14 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:godrej_home/screens/home_screen.dart';
 
 class MainScreen extends StatefulWidget {
-  const MainScreen({super.key});
+  const MainScreen({
+    super.key,
+    required this.presetTitle,
+    required this.presetImage,
+  });
+
+  final String presetTitle;
+  final String presetImage;
 
   @override
   State<MainScreen> createState() => _MainScreenState();
@@ -95,7 +102,7 @@ class _MainScreenState extends State<MainScreen> {
                 child: Stack(
                   children: [
                     Image.asset(
-                      'images/morning_poster.png',
+                      'images/${widget.presetImage}',
                       fit: BoxFit.contain,
                     ),
 
