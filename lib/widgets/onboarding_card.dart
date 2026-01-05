@@ -120,7 +120,7 @@ class _OnboardingCardState extends State<OnboardingCard> {
                 borderRadius: BorderRadius.circular(100.0),
                 color: widget.theme.primaryColor,
               ),
-              child: Image.asset('images/${widget.imgValue}', height: 85),
+              child: Image.asset('images/${widget.imgValue}.png', height: 85),
             ),
             SizedBox(height: 20.0),
             Row(
