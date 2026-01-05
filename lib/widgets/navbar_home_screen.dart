@@ -21,8 +21,8 @@ class NavbarHomeScreen extends StatelessWidget {
           GestureDetector(
             onTap: () {},
             child: Container(
-              height: 70.0,
-              width: 70.0,
+              height: 80.0,
+              width: 80.0,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(20.0),
                 color: theme.primaryContrastingColor,

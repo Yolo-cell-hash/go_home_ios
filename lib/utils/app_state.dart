@@ -41,6 +41,7 @@ class AppState extends ChangeNotifier {
   String _refreshToken = '';
   String _lockID = '';
   String _ipType = '';
+  String _mood = '';
 
   dynamic _otp;
 
@@ -60,6 +61,7 @@ class AppState extends ChangeNotifier {
   String get accessToken => _accessToekn;
   String get refreshToken => _refreshToken;
   String get lockID => _lockID;
+  String get mood => _mood;
 
   dynamic get otp => _otp;
 
@@ -127,6 +129,11 @@ class AppState extends ChangeNotifier {
     _ipType = ipType;
     notifyListeners();
     print('📱 AppState updated: IP=$ip, Type=$ipType');
+  }
+
+  void setMood(String value) {
+    _mood = value;
+    notifyListeners();
   }
 
   set gasLeak(dynamic data) {

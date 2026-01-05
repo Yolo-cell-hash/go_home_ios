@@ -12,6 +12,7 @@ import 'package:godrej_home/screens/splash_screen.dart';
 import 'package:godrej_home/screens/splash_screen2.dart';
 import 'package:godrej_home/screens/home_screen.dart';
 import 'package:godrej_home/screens/main_screen.dart';
+import 'package:godrej_home/screens/setup_main_screen.dart';
 
 Future<void> _requestAllPermissions() async {
   final permissions = [
@@ -52,6 +53,7 @@ class _MyAppState extends State<MyApp> {
     '/home': (context) => HomeScreen(),
     '/ss2': (context) => SplashScreen2(),
     '/main': (context) => MainScreen(presetTitle: '', presetImage: ''),
+    '/setup_main': (context) => SetupMainScreen(),
   };
 
   @override

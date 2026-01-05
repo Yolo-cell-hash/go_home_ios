@@ -34,7 +34,7 @@ class _PresetsPanelState extends State<PresetsPanel> {
           },
           doesHaveImg: true,
           theme: widget.theme,
-          imgValue: 'Mask group-2.png',
+          imgValue: 'morning_poster_circle',
           isEditPreset: false,
           title: 'Morning',
         ),
@@ -46,14 +46,14 @@ class _PresetsPanelState extends State<PresetsPanel> {
               MaterialPageRoute(
                 builder: (context) => const MainScreen(
                   presetTitle: 'Evening',
-                  presetImage: 'Mask group-1.png',
+                  presetImage: 'evening_poster.png',
                 ),
               ),
             );
           },
           doesHaveImg: true,
           theme: widget.theme,
-          imgValue: 'Mask group-1.png',
+          imgValue: 'evening_poster_circle',
           isEditPreset: false,
           title: 'Evening',
         ),
@@ -65,14 +65,14 @@ class _PresetsPanelState extends State<PresetsPanel> {
               MaterialPageRoute(
                 builder: (context) => const MainScreen(
                   presetTitle: 'Party',
-                  presetImage: 'Mask group.png',
+                  presetImage: 'party_poster.png',
                 ),
               ),
             );
           },
           doesHaveImg: true,
           theme: widget.theme,
-          imgValue: 'Mask group.png',
+          imgValue: 'party_poster_circle',
           title: 'Party',
           isEditPreset: false,
         ),
