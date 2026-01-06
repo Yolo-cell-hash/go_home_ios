@@ -18,11 +18,29 @@ class _SetupCarouselState extends State<SetupCarousel> {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(borderRadius: BorderRadius.circular(15)),
-      child: Center(
-        child: Image.asset(
-          widget.path,
-          fit: BoxFit.fill,
-          width: double.infinity,
+      child: GestureDetector(
+        onTap: () {
+          switch (widget.id) {
+            case 'foyer':
+              Navigator.pushNamed(context, '/foyer');
+              break;
+            case 'living':
+              Navigator.pushNamed(context, 'living');
+              break;
+            case 'bedroom':
+              Navigator.pushNamed(context, 'bedroom');
+              break;
+            case 'kitchen':
+              Navigator.pushNamed(context, 'kitchen');
+              break;
+          }
+        },
+        child: Center(
+          child: Image.asset(
+            widget.path,
+            fit: BoxFit.fill,
+            width: double.infinity,
+          ),
         ),
       ),
     );
