@@ -89,11 +89,16 @@ class _NavbarSetupState extends State<NavbarSetup> {
                     ModalRoute.withName('/home'),
                   );
                 },
-                child: Center(
-                  child: Image.asset(
-                    'images/${widget.imgPath}_circle.png',
-                    height: 120.0,
-                    width: 120.0,
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.popAndPushNamed(context, '/home');
+                  },
+                  child: Center(
+                    child: Image.asset(
+                      'images/${widget.imgPath}_circle.png',
+                      height: 120.0,
+                      width: 120.0,
+                    ),
                   ),
                 ),
               ),
