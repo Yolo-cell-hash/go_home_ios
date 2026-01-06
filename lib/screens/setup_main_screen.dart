@@ -6,6 +6,10 @@ import 'package:carousel_slider/carousel_slider.dart';
 import 'package:godrej_home/widgets/navbar_setup.dart';
 import 'package:godrej_home/widgets/setup_carousel.dart';
 import 'package:godrej_home/utils/app_state.dart';
+import 'package:godrej_home/screens/foyer_main_screen.dart';
+import 'package:godrej_home/screens/living_main_screen.dart';
+import 'package:godrej_home/screens/bedroom_main_screen.dart';
+import 'package:godrej_home/screens/kitchen_main_screen.dart';
 
 class SetupMainScreen extends StatefulWidget {
   const SetupMainScreen({super.key});
@@ -141,8 +145,7 @@ class _SetupMainScreenState extends State<SetupMainScreen> {
                                 onPressed: () {
                                   Navigator.of(context).pop();
                                   setState(() {
-                                    _currentIndex =
-                                        previousIndex; // Restore the previous selection
+                                    _currentIndex = previousIndex;
                                   });
                                 },
                               ),
@@ -195,6 +198,37 @@ class _SetupMainScreenState extends State<SetupMainScreen> {
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeInOut,
         );
+      },
+      onDoubleTap: () {
+        print('Double tapped');
+        switch (index) {
+          case 0:
+            Navigator.of(context).push(
+              CupertinoPageRoute(builder: (context) => const FoyerMainScreen()),
+            );
+            break;
+          case 1:
+            Navigator.of(context).push(
+              CupertinoPageRoute(
+                builder: (context) => const LivingMainScreen(),
+              ),
+            );
+            break;
+          case 2:
+            Navigator.of(context).push(
+              CupertinoPageRoute(
+                builder: (context) => const BedroomMainScreen(),
+              ),
+            );
+            break;
+          case 3:
+            Navigator.of(context).push(
+              CupertinoPageRoute(
+                builder: (context) => const KitchenMainScreen(),
+              ),
+            );
+            break;
+        }
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
