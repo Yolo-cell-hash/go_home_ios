@@ -24,7 +24,7 @@ class NavbarHomeScreen extends StatelessWidget {
               height: 80.0,
               width: 80.0,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20.0),
+                borderRadius: BorderRadius.circular(35.0),
                 color: theme.primaryContrastingColor,
               ),
               child: Center(child: Image.asset('images/Vector-3.png')),
