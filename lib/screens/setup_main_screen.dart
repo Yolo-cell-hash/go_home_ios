@@ -119,17 +119,57 @@ class _SetupMainScreenState extends State<SetupMainScreen> {
                     _buildBottomItem(1, 'images/Group 133.png', theme),
                     _buildBottomItem(2, 'images/Group 141.png', theme),
                     _buildBottomItem(3, 'images/Group 135.png', theme),
-                    Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(15.0),
-                        color: theme.primaryContrastingColor,
-                      ),
-                      height: 72.0,
-                      width: 109.0,
-                      child: Icon(
-                        CupertinoIcons.add,
-                        weight: 5.0,
-                        color: theme.primaryColor,
+                    GestureDetector(
+                      onTap: () {
+                        int previousIndex =
+                            _currentIndex; // Store the current index
+                        setState(() {
+                          _currentIndex =
+                              4; // Temporarily select the add button
+                        });
+
+                        showCupertinoDialog(
+                          context: context,
+                          builder: (context) => CupertinoAlertDialog(
+                            title: const Text('Coming Soon'),
+                            content: const Text(
+                              'Room addition feature coming soon',
+                            ),
+                            actions: [
+                              CupertinoDialogAction(
+                                child: const Text('OK'),
+                                onPressed: () {
+                                  Navigator.of(context).pop();
+                                  setState(() {
+                                    _currentIndex =
+                                        previousIndex; // Restore the previous selection
+                                  });
+                                },
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeInOut,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(15.0),
+                          color: theme.primaryContrastingColor,
+                          border: _currentIndex == 4
+                              ? Border.all(
+                                  color: theme.primaryColor,
+                                  width: 2.5,
+                                )
+                              : null,
+                        ),
+                        height: _currentIndex == 4 ? 80.0 : 72.0,
+                        width: _currentIndex == 4 ? 120.0 : 109.0,
+                        child: Icon(
+                          CupertinoIcons.add,
+                          weight: 5.0,
+                          color: theme.primaryColor,
+                        ),
                       ),
                     ),
                   ],
