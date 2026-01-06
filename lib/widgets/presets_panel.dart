@@ -24,7 +24,7 @@ class _PresetsPanelState extends State<PresetsPanel> {
             print('Morning Action called');
             Navigator.push(
               context,
-              MaterialPageRoute(
+              CupertinoPageRoute(
                 builder: (context) => const MainScreen(
                   presetTitle: 'Morning',
                   presetImage: 'morning_poster.png',
@@ -43,7 +43,7 @@ class _PresetsPanelState extends State<PresetsPanel> {
             print('Evening Action Called');
             Navigator.push(
               context,
-              MaterialPageRoute(
+              CupertinoPageRoute(
                 builder: (context) => const MainScreen(
                   presetTitle: 'Evening',
                   presetImage: 'evening_poster.png',
@@ -62,7 +62,7 @@ class _PresetsPanelState extends State<PresetsPanel> {
             print('Party Action Clicked');
             Navigator.push(
               context,
-              MaterialPageRoute(
+              CupertinoPageRoute(
                 builder: (context) => const MainScreen(
                   presetTitle: 'Party',
                   presetImage: 'party_poster.png',
