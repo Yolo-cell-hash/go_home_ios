@@ -74,7 +74,7 @@ class _RoomNavbarSpecial extends State<RoomNavbarSpecial> {
                       onTap: () {
                         Navigator.pushAndRemoveUntil(
                           context,
-                          MaterialPageRoute(
+                          CupertinoPageRoute(
                             builder: (BuildContext context) => HomeScreen(),
                           ),
                           ModalRoute.withName('/home'),

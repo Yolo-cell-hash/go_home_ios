@@ -64,7 +64,7 @@ class _NavbarSetupState extends State<NavbarSetup> {
                     onTap: () {
                       Navigator.pushAndRemoveUntil(
                         context,
-                        MaterialPageRoute(
+                        CupertinoPageRoute(
                           builder: (BuildContext context) => HomeScreen(),
                         ),
                         ModalRoute.withName('/home'),
@@ -83,7 +83,7 @@ class _NavbarSetupState extends State<NavbarSetup> {
                 onTap: () {
                   Navigator.pushAndRemoveUntil(
                     context,
-                    MaterialPageRoute(
+                    CupertinoPageRoute(
                       builder: (BuildContext context) => HomeScreen(),
                     ),
                     ModalRoute.withName('/home'),

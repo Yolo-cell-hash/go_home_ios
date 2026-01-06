@@ -91,7 +91,7 @@ class _MainScreenState extends State<MainScreen> {
                           onTap: () {
                             Navigator.pushAndRemoveUntil(
                               context,
-                              MaterialPageRoute(
+                              CupertinoPageRoute(
                                 builder: (BuildContext context) => HomeScreen(),
                               ),
                               ModalRoute.withName('/home'),
@@ -151,7 +151,7 @@ class _MainScreenState extends State<MainScreen> {
                           onPressed: () {
                             Navigator.push(
                               context,
-                              MaterialPageRoute(
+                              CupertinoPageRoute(
                                 builder: (context) => SetupMainScreen(),
                               ),
                             );
