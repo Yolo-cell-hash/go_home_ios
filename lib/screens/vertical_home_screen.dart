@@ -529,7 +529,7 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
                   GestureDetector(
                     onTap: () {
                       _pageController.animateToPage(
-                        2,
+                        1,
                         duration: const Duration(milliseconds: 300),
                         curve: Curves.easeInOut,
                       );
@@ -699,12 +699,12 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
             children: [
               Row(
                 children: [
-                  // Back button - navigates to Kitchen (page 3)
+                  // Back button - navigates to Living Room (page 2)
                   GestureDetector(
                     onTap: () {
                       _pageController.animateToPage(
-                        3,
-                        duration: const Duration(milliseconds: 300),
+                        1,
+                        duration: const Duration(milliseconds: 500),
                         curve: Curves.easeInOut,
                       );
                     },
@@ -840,6 +840,31 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
                       ),
                     ),
                   ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              // Home button at the bottom center
+              Center(
+                child: GestureDetector(
+                  onTap: () {
+                    _pageController.animateToPage(
+                      0,
+                      duration: const Duration(milliseconds: 500),
+                      curve: Curves.easeInOut,
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: primaryColor, width: 1.5),
+                    ),
+                    child: Icon(
+                      CupertinoIcons.home,
+                      size: 24,
+                      color: primaryColor,
+                    ),
+                  ),
                 ),
               ),
             ],
