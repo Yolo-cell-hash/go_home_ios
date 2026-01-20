@@ -16,6 +16,7 @@ import 'package:godrej_home/screens/setup_main_screen.dart';
 import 'package:godrej_home/screens/foyer_main_screen.dart';
 import 'package:godrej_home/screens/living_main_screen.dart';
 import 'package:godrej_home/screens/bedroom_main_screen.dart';
+import 'package:godrej_home/screens/vertical_home_screen.dart';
 import 'package:godrej_home/screens/kitchen_main_screen.dart';
 
 Future<void> _requestAllPermissions() async {
@@ -62,6 +63,7 @@ class _MyAppState extends State<MyApp> {
     'living': (context) => LivingMainScreen(),
     'bedroom': (context) => BedroomMainScreen(),
     'kitchen': (context) => KitchenMainScreen(),
+    'vertical_home': (context) => VerticalHomeScreen(),
   };
 
   @override
