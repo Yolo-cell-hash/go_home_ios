@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import 'package:godrej_home/screens/home_screen.dart';
+import 'package:godrej_home/screens/vertical_home_screen.dart';
 
 class SplashScreen2 extends StatelessWidget {
   const SplashScreen2({super.key});
@@ -18,7 +19,7 @@ class SplashScreen2 extends StatelessWidget {
         child: SvgPicture.asset('images/Group 133.svg', height: 100),
       ),
       onAnimationEnd: () => debugPrint("On Fade In End"),
-      nextScreen: HomeScreen(),
+      nextScreen: VerticalHomeScreen(),
     );
   }
 }
