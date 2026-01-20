@@ -286,20 +286,18 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
   Widget _buildGalleryScreen(BuildContext context) {
     final primaryColor = CupertinoTheme.of(context).primaryColor;
 
-    // Control items for the 3x3 grid - can be icons or image paths
-    // To use an icon: provide IconData
-    // To use a custom image: provide the path as a String (e.g., 'images/my_icon.png')
-    // Note: SVGs with embedded bitmaps don't work with flutter_svg, use PNG instead
-    final List<dynamic> controlItems = [
-      'images/door_lock.png', // Door lock - needs vector SVG or PNG
-      'images/vdb.svg', // VDB (vector SVG - works)
-      'images/camera.png', // Camera (PNG version)
-      CupertinoIcons.lightbulb, // Icon
-      CupertinoIcons.lightbulb, // Icon
-      'images/fan.png', // Fan - needs vector SVG or PNG
-      'images/window_sensor.png', // Icon
-      'images/fire_sensor.png', // Icon
-      'images/ac.png', // AC (PNG version)
+    // Control items for the 3x3 grid with labels
+    // Each item is a Map with 'icon' (IconData or String path) and 'label' (String)
+    final List<Map<String, dynamic>> controlItems = [
+      {'icon': 'images/door_lock.png', 'label': 'Door Lock'},
+      {'icon': 'images/vdb.svg', 'label': 'VDB'},
+      {'icon': 'images/camera.png', 'label': 'Camera'},
+      {'icon': CupertinoIcons.lightbulb, 'label': 'Light'},
+      {'icon': CupertinoIcons.lightbulb, 'label': 'Light'},
+      {'icon': 'images/fan.png', 'label': 'Fan'},
+      {'icon': 'images/window_sensor.png', 'label': 'Window'},
+      {'icon': 'images/fire_sensor.png', 'label': 'Fire'},
+      {'icon': 'images/ac.png', 'label': 'AC'},
     ];
 
     return Container(
@@ -378,20 +376,21 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
                       child: Center(
                         child: SizedBox(
                           width: 442,
-                          height: 442,
+                          height: 600,
                           child: GridView.builder(
                             shrinkWrap: true,
                             physics: const NeverScrollableScrollPhysics(),
                             gridDelegate:
                                 const SliverGridDelegateWithFixedCrossAxisCount(
                                   crossAxisCount: 3,
-                                  mainAxisSpacing: 80,
+                                  mainAxisSpacing: 30,
                                   crossAxisSpacing: 80,
-                                  childAspectRatio: 1,
+                                  childAspectRatio: 0.65,
                                 ),
                             itemCount: 9,
                             itemBuilder: (context, index) {
                               final isEnabled = _livingRoomToggles[index];
+                              final item = controlItems[index];
                               return GestureDetector(
                                 onTap: () {
                                   setState(() {
@@ -399,27 +398,53 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
                                         !_livingRoomToggles[index];
                                   });
                                 },
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 200),
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: isEnabled
-                                        ? primaryColor.withOpacity(0.15)
-                                        : CupertinoColors.systemGrey5,
-                                    border: Border.all(
-                                      color: isEnabled
-                                          ? primaryColor
-                                          : CupertinoColors.systemGrey3,
-                                      width: 1,
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Expanded(
+                                      flex: 4,
+                                      child: AnimatedContainer(
+                                        duration: const Duration(
+                                          milliseconds: 200,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: isEnabled
+                                              ? primaryColor.withOpacity(0.15)
+                                              : CupertinoColors.systemGrey5,
+                                          border: Border.all(
+                                            color: isEnabled
+                                                ? primaryColor
+                                                : CupertinoColors.systemGrey3,
+                                            width: 1,
+                                          ),
+                                        ),
+                                        child: Center(
+                                          child: _buildControlItem(
+                                            item['icon'],
+                                            isEnabled,
+                                            primaryColor,
+                                          ),
+                                        ),
+                                      ),
                                     ),
-                                  ),
-                                  child: Center(
-                                    child: _buildControlItem(
-                                      controlItems[index],
-                                      isEnabled,
-                                      primaryColor,
+                                    const SizedBox(height: 12),
+                                    Flexible(
+                                      flex: 1,
+                                      child: Text(
+                                        item['label'],
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          color: isEnabled
+                                              ? primaryColor
+                                              : CupertinoColors.systemGrey,
+                                          fontFamily: 'GEG',
+                                        ),
+                                        textAlign: TextAlign.center,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
                                     ),
-                                  ),
+                                  ],
                                 ),
                               );
                             },
@@ -480,14 +505,14 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
   Widget _buildAboutScreen(BuildContext context) {
     final primaryColor = CupertinoTheme.of(context).primaryColor;
 
-    // Control items for the 3x2 grid
-    final List<dynamic> kitchenControlItems = [
-      'images/window_sensor.png',
-      'images/gas_sensor.png',
-      'images/chimney.png',
-      CupertinoIcons.lightbulb,
-      CupertinoIcons.lightbulb,
-      'images/fan.png',
+    // Control items for the 3x2 grid with labels
+    final List<Map<String, dynamic>> kitchenControlItems = [
+      {'icon': 'images/window_sensor.png', 'label': 'Window'},
+      {'icon': 'images/gas_sensor.png', 'label': 'Gas Sensor'},
+      {'icon': 'images/chimney.png', 'label': 'Chimney'},
+      {'icon': CupertinoIcons.lightbulb, 'label': 'Light'},
+      {'icon': CupertinoIcons.lightbulb, 'label': 'Light'},
+      {'icon': 'images/fan.png', 'label': 'Fan'},
     ];
 
     return Container(
@@ -564,20 +589,21 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
                       child: Center(
                         child: SizedBox(
                           width: 442,
-                          height: 268, // 2 rows: (94 * 2) + 80
+                          height: 380,
                           child: GridView.builder(
                             shrinkWrap: true,
                             physics: const NeverScrollableScrollPhysics(),
                             gridDelegate:
                                 const SliverGridDelegateWithFixedCrossAxisCount(
                                   crossAxisCount: 3,
-                                  mainAxisSpacing: 80,
+                                  mainAxisSpacing: 30,
                                   crossAxisSpacing: 80,
-                                  childAspectRatio: 1,
+                                  childAspectRatio: 0.65,
                                 ),
                             itemCount: 6,
                             itemBuilder: (context, index) {
                               final isEnabled = _kitchenToggles[index];
+                              final item = kitchenControlItems[index];
                               return GestureDetector(
                                 onTap: () {
                                   setState(() {
@@ -585,27 +611,53 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
                                         !_kitchenToggles[index];
                                   });
                                 },
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 200),
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: isEnabled
-                                        ? primaryColor.withOpacity(0.15)
-                                        : CupertinoColors.systemGrey5,
-                                    border: Border.all(
-                                      color: isEnabled
-                                          ? primaryColor
-                                          : CupertinoColors.systemGrey3,
-                                      width: 1,
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Expanded(
+                                      flex: 4,
+                                      child: AnimatedContainer(
+                                        duration: const Duration(
+                                          milliseconds: 200,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: isEnabled
+                                              ? primaryColor.withOpacity(0.15)
+                                              : CupertinoColors.systemGrey5,
+                                          border: Border.all(
+                                            color: isEnabled
+                                                ? primaryColor
+                                                : CupertinoColors.systemGrey3,
+                                            width: 1,
+                                          ),
+                                        ),
+                                        child: Center(
+                                          child: _buildControlItem(
+                                            item['icon'],
+                                            isEnabled,
+                                            primaryColor,
+                                          ),
+                                        ),
+                                      ),
                                     ),
-                                  ),
-                                  child: Center(
-                                    child: _buildControlItem(
-                                      kitchenControlItems[index],
-                                      isEnabled,
-                                      primaryColor,
+                                    const SizedBox(height: 12),
+                                    Flexible(
+                                      flex: 1,
+                                      child: Text(
+                                        item['label'],
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          color: isEnabled
+                                              ? primaryColor
+                                              : CupertinoColors.systemGrey,
+                                          fontFamily: 'GEG',
+                                        ),
+                                        textAlign: TextAlign.center,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
                                     ),
-                                  ),
+                                  ],
                                 ),
                               );
                             },
@@ -627,14 +679,14 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
   Widget _buildContactScreen(BuildContext context) {
     final primaryColor = CupertinoTheme.of(context).primaryColor;
 
-    // Control items for the 3x2 grid
-    final List<dynamic> bedroomControlItems = [
-      'images/window_sensor.png',
-      'images/fire_sensor.png',
-      'images/ac.png',
-      CupertinoIcons.bed_double,
-      'images/window_sensor.png',
-      CupertinoIcons.lightbulb,
+    // Control items for the 3x2 grid with labels
+    final List<Map<String, dynamic>> bedroomControlItems = [
+      {'icon': 'images/window_sensor.png', 'label': 'Window'},
+      {'icon': 'images/fire_sensor.png', 'label': 'Fire'},
+      {'icon': 'images/ac.png', 'label': 'AC'},
+      {'icon': CupertinoIcons.bed_double, 'label': 'Bed'},
+      {'icon': 'images/window_sensor.png', 'label': 'Window'},
+      {'icon': CupertinoIcons.lightbulb, 'label': 'Light'},
     ];
 
     return Container(
@@ -711,20 +763,21 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
                       child: Center(
                         child: SizedBox(
                           width: 442,
-                          height: 268, // 2 rows: (94 * 2) + 80
+                          height: 380,
                           child: GridView.builder(
                             shrinkWrap: true,
                             physics: const NeverScrollableScrollPhysics(),
                             gridDelegate:
                                 const SliverGridDelegateWithFixedCrossAxisCount(
                                   crossAxisCount: 3,
-                                  mainAxisSpacing: 80,
+                                  mainAxisSpacing: 30,
                                   crossAxisSpacing: 80,
-                                  childAspectRatio: 1,
+                                  childAspectRatio: 0.65,
                                 ),
                             itemCount: 6,
                             itemBuilder: (context, index) {
                               final isEnabled = _bedroomToggles[index];
+                              final item = bedroomControlItems[index];
                               return GestureDetector(
                                 onTap: () {
                                   setState(() {
@@ -732,27 +785,53 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
                                         !_bedroomToggles[index];
                                   });
                                 },
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 200),
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: isEnabled
-                                        ? primaryColor.withOpacity(0.15)
-                                        : CupertinoColors.systemGrey5,
-                                    border: Border.all(
-                                      color: isEnabled
-                                          ? primaryColor
-                                          : CupertinoColors.systemGrey3,
-                                      width: 1,
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Expanded(
+                                      flex: 4,
+                                      child: AnimatedContainer(
+                                        duration: const Duration(
+                                          milliseconds: 200,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: isEnabled
+                                              ? primaryColor.withOpacity(0.15)
+                                              : CupertinoColors.systemGrey5,
+                                          border: Border.all(
+                                            color: isEnabled
+                                                ? primaryColor
+                                                : CupertinoColors.systemGrey3,
+                                            width: 1,
+                                          ),
+                                        ),
+                                        child: Center(
+                                          child: _buildControlItem(
+                                            item['icon'],
+                                            isEnabled,
+                                            primaryColor,
+                                          ),
+                                        ),
+                                      ),
                                     ),
-                                  ),
-                                  child: Center(
-                                    child: _buildControlItem(
-                                      bedroomControlItems[index],
-                                      isEnabled,
-                                      primaryColor,
+                                    const SizedBox(height: 12),
+                                    Flexible(
+                                      flex: 1,
+                                      child: Text(
+                                        item['label'],
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          color: isEnabled
+                                              ? primaryColor
+                                              : CupertinoColors.systemGrey,
+                                          fontFamily: 'GEG',
+                                        ),
+                                        textAlign: TextAlign.center,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
                                     ),
-                                  ),
+                                  ],
                                 ),
                               );
                             },
