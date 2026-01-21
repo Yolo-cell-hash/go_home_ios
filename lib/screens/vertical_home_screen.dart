@@ -10,6 +10,9 @@ import 'package:firebase_database/firebase_database.dart';
 import 'vertical_home/welcome_screen.dart';
 import 'vertical_home/home_scenes_screen.dart';
 import 'vertical_home/room_control_screen.dart';
+import 'vertical_home/door_lock_screen.dart';
+import 'vertical_home/vdb_screen.dart';
+import 'vertical_home/camera_screen.dart';
 
 /// Main vertical home screen with snap scrolling pages
 class VerticalHomeScreen extends StatefulWidget {
@@ -319,6 +322,7 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
               WelcomeScreenWidget(
                 iconStatus: _welcomeIconStatus,
                 onIconTap: _handleWelcomeIconTap,
+                onIconLongPress: _handleWelcomeIconLongPress,
               ),
               // Screen 2: Home Scenes & Spaces
               HomeScenesScreenWidget(
@@ -394,6 +398,36 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
     // Current status: red(1) -> set to true, green(2) -> set to false
     final newValue = _welcomeIconStatus[index] == 1;
     _updateFirebaseAndSync(dbKey, newValue);
+  }
+
+  /// Handle welcome screen icon long press for navigation
+  void _handleWelcomeIconLongPress(int index) {
+    print(
+      '[DEBUG] Welcome icon $index long pressed - navigating to detail screen',
+    );
+
+    // Navigate to the appropriate screen based on index
+    // 0 = Door Lock, 1 = VDB, 2 = Camera
+    Widget targetScreen;
+
+    switch (index) {
+      case 0:
+        targetScreen = const DoorLockScreen();
+        break;
+      case 1:
+        targetScreen = const VDBScreen();
+        break;
+      case 2:
+        targetScreen = const CameraScreen();
+        break;
+      default:
+        print('[ERROR] Invalid icon index for long press: $index');
+        return;
+    }
+
+    Navigator.of(
+      context,
+    ).push(CupertinoPageRoute(builder: (context) => targetScreen));
   }
 
   /// Handle home scene selection
