@@ -24,6 +24,9 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
   // Toggle states for welcome screen icons (Door Lock, VDB, Camera)
   List<bool> _welcomeIconToggles = List.generate(3, (index) => false);
 
+  // Selected home scene preset (0-3 for the 4 options, -1 for none)
+  int _selectedHomeScene = -1;
+
   // Status colors for icons: 0=grey, 1=red, 2=green
   // Welcome screen icons (3)
   late List<int> _welcomeIconStatus = [2, 1, 2]; // green, red, green
@@ -402,91 +405,202 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
     );
   }
 
-  // Screen 2: Features Screen
+  // Screen 2: Home Scenes & Home Spaces Screen
   Widget _buildFeaturesScreen(BuildContext context) {
+    final primaryColor = CupertinoTheme.of(context).primaryColor;
+
+    // Home Scenes items
+    final List<Map<String, String>> homeScenes = [
+      {'image': 'images/morning_preset.png', 'label': 'Good Morning'},
+      {'image': 'images/night_preset.png', 'label': 'Good Night'},
+      {'image': 'images/party_preset.png', 'label': 'House Party'},
+      {'image': 'images/vaccation_preset.png', 'label': 'Vaccation'},
+    ];
+
+    // Home Spaces items
+    final List<Map<String, String>> homeSpaces = [
+      {'image': 'images/living_room_guide.png', 'label': 'Living Room'},
+      {'image': 'images/kitchen_guide.png', 'label': 'Kitchen'},
+      {'image': 'images/bedroom_guide.png', 'label': 'Bedroom'},
+      {'image': 'images/washroom_guide.png', 'label': 'Washroom'},
+    ];
+
     return Container(
       color: CupertinoColors.systemBackground,
       child: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(40),
+          padding: const EdgeInsets.symmetric(horizontal: 60, vertical: 40),
           child: Column(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Features',
-                style: TextStyle(fontSize: 42, fontWeight: FontWeight.bold),
+              // Home Scenes Section
+              Text(
+                'Home Scenes',
+                style: TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.w500,
+                  color: primaryColor,
+                  fontFamily: 'GEG',
+                ),
+              ),
+              // const SizedBox(height: 30),
+              // Home Scenes Row - 4 items evenly spaced
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: homeScenes.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final scene = entry.value;
+                  final isSelected = _selectedHomeScene == index;
+
+                  return Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 15),
+                      child: GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _selectedHomeScene = index;
+                          });
+                        },
+                        child: Column(
+                          children: [
+                            AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(30),
+                                border: isSelected
+                                    ? Border.all(color: primaryColor, width: 5)
+                                    : null,
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(16),
+                                child: Image.asset(
+                                  scene['image']!,
+                                  height: 180,
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              scene['label']!,
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w400,
+                                color: primaryColor,
+                                fontFamily: 'GEG',
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
               ),
               const SizedBox(height: 40),
-              Expanded(
-                child: GridView.count(
-                  crossAxisCount: 2,
-                  mainAxisSpacing: 20,
-                  crossAxisSpacing: 20,
-                  physics: const NeverScrollableScrollPhysics(),
-                  children: [
-                    _buildFeatureCard(
-                      CupertinoIcons.device_phone_portrait,
-                      'Responsive',
-                      'Optimized for iPad',
-                      CupertinoColors.systemBlue,
-                    ),
-                    _buildFeatureCard(
-                      CupertinoIcons.square_stack_3d_down_right,
-                      'Snap Scrolling',
-                      'Smooth page transitions',
-                      CupertinoColors.systemGreen,
-                    ),
-                    _buildFeatureCard(
-                      CupertinoIcons.speedometer,
-                      'Performance',
-                      'Native iOS components',
-                      CupertinoColors.systemOrange,
-                    ),
-                    _buildFeatureCard(
-                      CupertinoIcons.paintbrush,
-                      'Beautiful Design',
-                      'Modern UI aesthetics',
-                      CupertinoColors.systemPurple,
-                    ),
-                  ],
+              // Home Spaces Section
+              Text(
+                'Home Spaces',
+                style: TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.w500,
+                  color: primaryColor,
+                  fontFamily: 'GEG',
                 ),
+              ),
+              // const SizedBox(height: 30),
+              // Home Spaces Row - 4 items evenly spaced
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: homeSpaces.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final space = entry.value;
+
+                  // Map space index to page index
+                  // 0: Living Room -> page 2
+                  // 1: Kitchen -> page 3
+                  // 2: Bedroom -> page 4
+                  // 3: Washroom -> not implemented yet
+                  int? targetPage;
+                  if (index == 0)
+                    targetPage = 2; // Living Room
+                  else if (index == 1)
+                    targetPage = 3; // Kitchen
+                  else if (index == 2)
+                    targetPage = 4; // Bedroom
+                  // Washroom (index 3) has no page yet
+
+                  return Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 15),
+                      child: GestureDetector(
+                        onTap: targetPage != null
+                            ? () {
+                                _pageController.animateToPage(
+                                  targetPage!,
+                                  duration: const Duration(milliseconds: 500),
+                                  curve: Curves.easeInOut,
+                                );
+                              }
+                            : () {
+                                // Show alert for Washroom (not implemented)
+                                showCupertinoDialog(
+                                  context: context,
+                                  builder: (BuildContext context) {
+                                    return CupertinoAlertDialog(
+                                      title: const Text('Coming Soon'),
+                                      content: const Padding(
+                                        padding: EdgeInsets.only(top: 8.0),
+                                        child: Text(
+                                          'The Washroom section has not been added yet. Stay tuned for future updates!',
+                                        ),
+                                      ),
+                                      actions: [
+                                        CupertinoDialogAction(
+                                          isDefaultAction: true,
+                                          onPressed: () {
+                                            Navigator.of(context).pop();
+                                          },
+                                          child: const Text('OK'),
+                                        ),
+                                      ],
+                                    );
+                                  },
+                                );
+                              },
+                        child: Column(
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(16),
+                              child: Image.asset(
+                                space['image']!,
+                                height: 180,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              space['label']!,
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w400,
+                                color: primaryColor,
+                                fontFamily: 'GEG',
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
               ),
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildFeatureCard(
-    IconData icon,
-    String title,
-    String description,
-    Color color,
-  ) {
-    return Container(
-      decoration: BoxDecoration(
-        color: CupertinoColors.systemGrey6,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 50, color: color),
-          const SizedBox(height: 16),
-          Text(
-            title,
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            description,
-            style: TextStyle(fontSize: 14, color: CupertinoColors.systemGrey),
-            textAlign: TextAlign.center,
-          ),
-        ],
       ),
     );
   }
