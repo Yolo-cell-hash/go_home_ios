@@ -10,11 +10,14 @@ class WelcomeScreenWidget extends StatelessWidget {
   final List<int>
   iconStatus; // [doorLock, vdb, camera] status (0=grey, 1=red, 2=green)
   final Function(int index) onIconTap; // Callback when icon is tapped
+  final Function(int index)?
+  onIconLongPress; // Callback when icon is long pressed
 
   const WelcomeScreenWidget({
     super.key,
     required this.iconStatus,
     required this.onIconTap,
+    this.onIconLongPress,
   });
 
   @override
@@ -205,6 +208,12 @@ class WelcomeScreenWidget extends StatelessWidget {
       onTap: () {
         print('[DEBUG] WelcomeScreen: Icon $index tapped');
         onIconTap(index);
+      },
+      onLongPress: () {
+        print('[DEBUG] WelcomeScreen: Icon $index long pressed');
+        if (onIconLongPress != null) {
+          onIconLongPress!(index);
+        }
       },
       child: Container(
         width: 102,

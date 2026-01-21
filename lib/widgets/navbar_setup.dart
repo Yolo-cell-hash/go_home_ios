@@ -79,29 +79,29 @@ class _NavbarSetupState extends State<NavbarSetup> {
                   ),
                 ],
               ),
-              GestureDetector(
-                onTap: () {
-                  Navigator.pushAndRemoveUntil(
-                    context,
-                    CupertinoPageRoute(
-                      builder: (BuildContext context) => HomeScreen(),
-                    ),
-                    ModalRoute.withName('/home'),
-                  );
-                },
-                child: GestureDetector(
-                  onTap: () {
-                    Navigator.popAndPushNamed(context, '/home');
-                  },
-                  child: Center(
-                    child: Image.asset(
-                      'images/${widget.imgPath}_circle.png',
-                      height: 120.0,
-                      width: 120.0,
-                    ),
-                  ),
-                ),
-              ),
+              // GestureDetector(
+              //   onTap: () {
+              //     Navigator.pushAndRemoveUntil(
+              //       context,
+              //       CupertinoPageRoute(
+              //         builder: (BuildContext context) => HomeScreen(),
+              //       ),
+              //       ModalRoute.withName('/home'),
+              //     );
+              //   },
+              //   child: GestureDetector(
+              //     onTap: () {
+              //       Navigator.popAndPushNamed(context, '/home');
+              //     },
+              //     child: Center(
+              //       child: Image.asset(
+              //         'images/${widget.imgPath}_circle.png',
+              //         height: 120.0,
+              //         width: 120.0,
+              //       ),
+              //     ),
+              //   ),
+              // ),
             ],
           ),
         ),
