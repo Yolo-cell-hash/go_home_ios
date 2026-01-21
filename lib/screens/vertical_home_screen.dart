@@ -1,6 +1,15 @@
-import 'package:flutter/cupertino.dart';
-import 'package:flutter_svg/flutter_svg.dart';
+// vertical_home_screen.dart
+// Main controller for the vertical home screen with snap scrolling
+// Coordinates all screen components and manages state
 
+import 'package:flutter/cupertino.dart';
+
+// Import modular screen components
+import 'vertical_home/welcome_screen.dart';
+import 'vertical_home/home_scenes_screen.dart';
+import 'vertical_home/room_control_screen.dart';
+
+/// Main vertical home screen with snap scrolling pages
 class VerticalHomeScreen extends StatefulWidget {
   const VerticalHomeScreen({super.key});
 
@@ -9,6 +18,7 @@ class VerticalHomeScreen extends StatefulWidget {
 }
 
 class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
+  // Page controller for snap scrolling
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
@@ -21,7 +31,7 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
   // Toggle states for bedroom controls (3x2 = 6 buttons)
   List<bool> _bedroomToggles = List.generate(6, (index) => false);
 
-  // Toggle states for welcome screen icons (Door Lock, VDB, Camera)
+  // Toggle states for welcome screen icons
   List<bool> _welcomeIconToggles = List.generate(3, (index) => false);
 
   // Selected home scene preset (0-3 for the 4 options, -1 for none)
@@ -31,28 +41,43 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
   // Welcome screen icons (3)
   late List<int> _welcomeIconStatus = [2, 1, 2]; // green, red, green
   // Living room icons (9)
-  late List<int> _livingRoomStatus = [
-    2,
-    1,
-    2,
-    1,
-    0,
-    2,
-    1,
-    2,
-    1,
-  ]; // mostly red/green, one grey
+  late List<int> _livingRoomStatus = [2, 1, 2, 1, 0, 2, 1, 2, 1];
   // Kitchen icons (6)
-  late List<int> _kitchenStatus = [
-    2,
-    1,
-    2,
-    1,
-    2,
-    0,
-  ]; // mostly red/green, one grey
+  late List<int> _kitchenStatus = [2, 1, 2, 1, 0, 2];
   // Bedroom icons (6)
-  late List<int> _bedroomStatus = [1, 2, 1, 2, 1, 2]; // alternating red/green
+  late List<int> _bedroomStatus = [1, 2, 1, 2, 0, 1];
+
+  // Control items data for each room
+  static const List<Map<String, dynamic>> livingRoomControls = [
+    {'icon': 'images/door_lock.png', 'label': 'Door Lock'},
+    {'icon': 'images/vdb.svg', 'label': 'VDB'},
+    {'icon': 'images/camera.png', 'label': 'Camera'},
+    {'icon': CupertinoIcons.lightbulb, 'label': 'Light'},
+    {'icon': CupertinoIcons.lightbulb, 'label': 'Light'},
+    {'icon': 'images/fan.png', 'label': 'Fan'},
+    {'icon': 'images/window_sensor.png', 'label': 'Window'},
+    {'icon': 'images/fire_sensor.png', 'label': 'Fire'},
+    {'icon': 'images/ac.png', 'label': 'AC'},
+  ];
+
+  static const List<Map<String, dynamic>> kitchenControls = [
+    {'icon': 'images/window_sensor.png', 'label': 'Window Sensor'},
+    {'icon': 'images/gas_sensor.png', 'label': 'Gas Sensor'},
+    {'icon': 'images/chimney.png', 'label': 'Chimney'},
+    {'icon': 'images/fan.png', 'label': 'Fan'},
+    {'icon': CupertinoIcons.lightbulb, 'label': 'Light'},
+    {'icon': CupertinoIcons.lightbulb, 'label': 'Light'},
+  ];
+
+  static const List<Map<String, dynamic>> bedroomControls = [
+    {'icon': 'images/window_sensor.png', 'label': 'Window Sensor'},
+    {'icon': 'images/fire_sensor.png', 'label': 'Fire Sensor'},
+    {'icon': 'images/ac.png', 'label': 'Air Conditioner'},
+    {'icon': 'images/bed_storage.png', 'label': 'Bed Storage'},
+    {'icon': CupertinoIcons.lightbulb, 'label': 'Light'},
+    {'icon': 'images/wardrobe.png', 'label': 'Wardrobe'},
+  ];
+
   @override
   void dispose() {
     _pageController.dispose();
@@ -61,26 +86,68 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    print(
+      '[DEBUG] VerticalHomeScreen build called - currentPage: $_currentPage',
+    );
+
     return CupertinoPageScaffold(
-      backgroundColor: CupertinoColors.systemBackground,
       child: Stack(
         children: [
-          // Vertical PageView with snap behavior
+          // Main page view
           PageView(
             controller: _pageController,
             scrollDirection: Axis.vertical,
-
-            onPageChanged: (int page) {
+            onPageChanged: (page) {
+              print('[DEBUG] Page changed to: $page');
               setState(() {
                 _currentPage = page;
               });
             },
             children: [
-              _buildWelcomeScreen(context),
-              _buildFeaturesScreen(context),
-              _buildGalleryScreen(context),
-              _buildAboutScreen(context),
-              _buildContactScreen(context),
+              // Screen 1: Welcome
+              WelcomeScreenWidget(
+                iconStatus: _welcomeIconStatus,
+                onIconTap: _handleWelcomeIconTap,
+              ),
+              // Screen 2: Home Scenes & Spaces
+              HomeScenesScreenWidget(
+                selectedScene: _selectedHomeScene,
+                onSceneSelected: _handleSceneSelected,
+                onSpaceNavigate: _handleSpaceNavigate,
+                onWashroomTap: _showWashroomAlert,
+              ),
+              // Screen 3: Living Room
+              RoomControlScreenWidget(
+                roomName: 'Living Room',
+                roomImagePath: 'images/living_room_model.png',
+                controlItems: livingRoomControls,
+                statusList: _livingRoomStatus,
+                onItemTap: _handleLivingRoomTap,
+                onBackTap: () => _navigateToPage(1),
+                gridItemCount: 9,
+              ),
+              // Screen 4: Kitchen
+              RoomControlScreenWidget(
+                roomName: 'Kitchen',
+                roomImagePath: 'images/kitchen_model.png',
+                controlItems: kitchenControls,
+                statusList: _kitchenStatus,
+                onItemTap: _handleKitchenTap,
+                onBackTap: () => _navigateToPage(1),
+                gridItemCount: 6,
+              ),
+              // Screen 5: Bedroom
+              RoomControlScreenWidget(
+                roomName: 'Bedroom',
+                roomImagePath: 'images/bedroom_model.png',
+                controlItems: bedroomControls,
+                statusList: _bedroomStatus,
+                onItemTap: _handleBedroomTap,
+                onBackTap: () => _navigateToPage(1),
+                gridItemCount: 6,
+                showHomeButton: true,
+                onHomeTap: () => _navigateToPage(0),
+              ),
             ],
           ),
           // Page indicator
@@ -88,1177 +155,132 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
             right: 20,
             top: 0,
             bottom: 0,
-            child: Center(child: _buildPageIndicator()),
+            child: _buildPageIndicator(),
           ),
         ],
       ),
     );
   }
 
-  // Page indicator showing current screen
-  Widget _buildPageIndicator() {
-    return Builder(
-      builder: (context) {
-        final primaryColor = CupertinoTheme.of(context).primaryColor;
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          children: List.generate(5, (index) {
-            return Container(
-              margin: const EdgeInsets.symmetric(vertical: 4),
-              width: 8,
-              height: _currentPage == index ? 24 : 8,
-              decoration: BoxDecoration(
-                color: _currentPage == index
-                    ? primaryColor
-                    : CupertinoColors.systemGrey3,
-                borderRadius: BorderRadius.circular(4),
-              ),
-            );
-          }),
+  /// Navigate to a specific page with animation
+  void _navigateToPage(int page) {
+    print('[DEBUG] Navigating to page: $page');
+    _pageController.animateToPage(
+      page,
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.easeInOut,
+    );
+  }
+
+  /// Handle welcome screen icon tap
+  void _handleWelcomeIconTap(int index) {
+    print('[DEBUG] Welcome icon $index tapped');
+    setState(() {
+      _welcomeIconToggles[index] = !_welcomeIconToggles[index];
+      // Toggle status between red(1) and green(2), keep grey(0) as is
+      if (_welcomeIconStatus[index] != 0) {
+        _welcomeIconStatus[index] = _welcomeIconStatus[index] == 1 ? 2 : 1;
+      }
+    });
+  }
+
+  /// Handle home scene selection
+  void _handleSceneSelected(int index) {
+    print('[DEBUG] Scene $index selected');
+    setState(() {
+      _selectedHomeScene = index;
+    });
+  }
+
+  /// Handle home space navigation
+  void _handleSpaceNavigate(int pageIndex) {
+    print('[DEBUG] Space navigation to page: $pageIndex');
+    _navigateToPage(pageIndex);
+  }
+
+  /// Show washroom not implemented alert
+  void _showWashroomAlert() {
+    print('[DEBUG] Showing washroom alert');
+    showCupertinoDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return CupertinoAlertDialog(
+          title: const Text('Coming Soon'),
+          content: const Padding(
+            padding: EdgeInsets.only(top: 8.0),
+            child: Text(
+              'The Washroom section has not been added yet. Stay tuned for future updates!',
+            ),
+          ),
+          actions: [
+            CupertinoDialogAction(
+              isDefaultAction: true,
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('OK'),
+            ),
+          ],
         );
       },
     );
   }
 
-  // Screen 1: Welcome Screen
-  Widget _buildWelcomeScreen(BuildContext context) {
-    final primaryColor = CupertinoTheme.of(context).primaryColor;
-
-    return Container(
-      color: CupertinoColors.systemBackground,
-      child: SafeArea(
-        child: Column(
-          children: [
-            // Navbar
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 30),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Image.asset('images/new_main_logo.png', height: 75),
-                  Row(
-                    children: [
-                      Text(
-                        'Mumbai Home',
-                        style: TextStyle(
-                          fontFamily: 'GEG',
-                          fontSize: 22,
-                          fontWeight: FontWeight.w400,
-                          color: primaryColor,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(color: primaryColor, width: 1.5),
-                        ),
-                        child: Icon(
-                          CupertinoIcons.chevron_down,
-                          size: 14,
-                          color: primaryColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            // Content - Backdrop image with fade blur and status text
-            Expanded(
-              child: Stack(
-                children: [
-                  // Background image
-                  Container(
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      image: DecorationImage(
-                        image: AssetImage('images/backdrop.png'),
-                        fit: BoxFit.fitWidth,
-                        alignment: Alignment.topCenter,
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    child: Container(
-                      height: 550,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            CupertinoColors.systemBackground.withOpacity(0.0),
-                            CupertinoColors.systemBackground.withOpacity(0.2),
-                            CupertinoColors.systemBackground.withOpacity(0.9),
-                            CupertinoColors.systemBackground.withOpacity(1.0),
-                            CupertinoColors.systemBackground.withOpacity(1.0),
-                          ],
-                          stops: const [0.0, 0.3, 0.6, 0.75, 1.0],
-                        ),
-                      ),
-                    ),
-                  ),
-                  // Status text with icons
-                  Positioned(
-                    bottom: 70,
-                    left: 70,
-                    right: 120,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        // Status text on the left
-                        Expanded(
-                          child: Text(
-                            'Security System is Armed Away.',
-                            textAlign: TextAlign.left,
-                            style: TextStyle(
-                              fontFamily: 'GEG',
-                              fontSize: 20,
-                              fontWeight: FontWeight.w400,
-                              color: primaryColor,
-                              height: 1.4,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 30),
-                        // Three icons with borders on the right
-                        Row(
-                          children: [
-                            // Door Lock icon
-                            GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  _welcomeIconToggles[0] =
-                                      !_welcomeIconToggles[0];
-                                  // Toggle status between red(1) and green(2), keep grey(0) as is
-                                  if (_welcomeIconStatus[0] != 0) {
-                                    _welcomeIconStatus[0] =
-                                        _welcomeIconStatus[0] == 1 ? 2 : 1;
-                                  }
-                                });
-                              },
-                              child: Container(
-                                width: 102,
-                                height: 102,
-                                padding: const EdgeInsets.all(3),
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: _getStatusColor(
-                                      _welcomeIconStatus[0],
-                                    ),
-                                    width: 2,
-                                  ),
-                                ),
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 200),
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: _welcomeIconStatus[0] == 2
-                                        ? primaryColor.withOpacity(0.15)
-                                        : CupertinoColors.systemGrey5,
-                                    border: Border.all(
-                                      color: _welcomeIconStatus[0] == 2
-                                          ? primaryColor
-                                          : CupertinoColors.systemGrey3,
-                                      width: 1,
-                                    ),
-                                  ),
-                                  child: Center(
-                                    child: Image.asset(
-                                      'images/door_lock.png',
-                                      width: 38,
-                                      height: 38,
-                                      color: primaryColor,
-                                      fit: BoxFit.contain,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 30),
-                            // VDB icon
-                            GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  _welcomeIconToggles[1] =
-                                      !_welcomeIconToggles[1];
-                                  // Toggle status between red(1) and green(2), keep grey(0) as is
-                                  if (_welcomeIconStatus[1] != 0) {
-                                    _welcomeIconStatus[1] =
-                                        _welcomeIconStatus[1] == 1 ? 2 : 1;
-                                  }
-                                });
-                              },
-                              child: Container(
-                                width: 102,
-                                height: 102,
-                                padding: const EdgeInsets.all(3),
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: _getStatusColor(
-                                      _welcomeIconStatus[1],
-                                    ),
-                                    width: 2,
-                                  ),
-                                ),
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 200),
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: _welcomeIconStatus[1] == 2
-                                        ? primaryColor.withOpacity(0.15)
-                                        : CupertinoColors.systemGrey5,
-                                    border: Border.all(
-                                      color: _welcomeIconStatus[1] == 2
-                                          ? primaryColor
-                                          : CupertinoColors.systemGrey3,
-                                      width: 1,
-                                    ),
-                                  ),
-                                  child: Center(
-                                    child: SvgPicture.asset(
-                                      'images/vdb.svg',
-                                      width: 28,
-                                      height: 28,
-                                      fit: BoxFit.contain,
-                                      allowDrawingOutsideViewBox: true,
-                                      colorFilter: ColorFilter.mode(
-                                        primaryColor,
-                                        BlendMode.srcIn,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 30),
-                            // Camera icon
-                            GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  _welcomeIconToggles[2] =
-                                      !_welcomeIconToggles[2];
-                                  // Toggle status between red(1) and green(2), keep grey(0) as is
-                                  if (_welcomeIconStatus[2] != 0) {
-                                    _welcomeIconStatus[2] =
-                                        _welcomeIconStatus[2] == 1 ? 2 : 1;
-                                  }
-                                });
-                              },
-                              child: Container(
-                                width: 102,
-                                height: 102,
-                                padding: const EdgeInsets.all(3),
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: _getStatusColor(
-                                      _welcomeIconStatus[2],
-                                    ),
-                                    width: 2,
-                                  ),
-                                ),
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 200),
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: _welcomeIconStatus[2] == 2
-                                        ? primaryColor.withOpacity(0.15)
-                                        : CupertinoColors.systemGrey5,
-                                    border: Border.all(
-                                      color: _welcomeIconStatus[2] == 2
-                                          ? primaryColor
-                                          : CupertinoColors.systemGrey3,
-                                      width: 1,
-                                    ),
-                                  ),
-                                  child: Center(
-                                    child: Image.asset(
-                                      'images/camera.png',
-                                      width: 38,
-                                      height: 38,
-                                      color: primaryColor,
-                                      fit: BoxFit.contain,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // Screen 2: Home Scenes & Home Spaces Screen
-  Widget _buildFeaturesScreen(BuildContext context) {
-    final primaryColor = CupertinoTheme.of(context).primaryColor;
-
-    // Home Scenes items
-    final List<Map<String, String>> homeScenes = [
-      {'image': 'images/morning_preset.png', 'label': 'Good Morning'},
-      {'image': 'images/night_preset.png', 'label': 'Good Night'},
-      {'image': 'images/party_preset.png', 'label': 'House Party'},
-      {'image': 'images/vaccation_preset.png', 'label': 'Vaccation'},
-    ];
-
-    // Home Spaces items
-    final List<Map<String, String>> homeSpaces = [
-      {'image': 'images/living_room_guide.png', 'label': 'Living Room'},
-      {'image': 'images/kitchen_guide.png', 'label': 'Kitchen'},
-      {'image': 'images/bedroom_guide.png', 'label': 'Bedroom'},
-      {'image': 'images/washroom_guide.png', 'label': 'Washroom'},
-    ];
-
-    return Container(
-      color: CupertinoColors.systemBackground,
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 60, vertical: 40),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Home Scenes Section
-              Text(
-                'Home Scenes',
-                style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.w500,
-                  color: primaryColor,
-                  fontFamily: 'GEG',
-                ),
-              ),
-              // const SizedBox(height: 30),
-              // Home Scenes Row - 4 items evenly spaced
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: homeScenes.asMap().entries.map((entry) {
-                  final index = entry.key;
-                  final scene = entry.value;
-                  final isSelected = _selectedHomeScene == index;
-
-                  return Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 15),
-                      child: GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _selectedHomeScene = index;
-                          });
-                        },
-                        child: Column(
-                          children: [
-                            AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(30),
-                                border: isSelected
-                                    ? Border.all(color: primaryColor, width: 5)
-                                    : null,
-                              ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(16),
-                                child: Image.asset(
-                                  scene['image']!,
-                                  height: 180,
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              scene['label']!,
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w400,
-                                color: primaryColor,
-                                fontFamily: 'GEG',
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 40),
-              // Home Spaces Section
-              Text(
-                'Home Spaces',
-                style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.w500,
-                  color: primaryColor,
-                  fontFamily: 'GEG',
-                ),
-              ),
-              // const SizedBox(height: 30),
-              // Home Spaces Row - 4 items evenly spaced
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: homeSpaces.asMap().entries.map((entry) {
-                  final index = entry.key;
-                  final space = entry.value;
-
-                  // Map space index to page index
-                  // 0: Living Room -> page 2
-                  // 1: Kitchen -> page 3
-                  // 2: Bedroom -> page 4
-                  // 3: Washroom -> not implemented yet
-                  int? targetPage;
-                  if (index == 0)
-                    targetPage = 2; // Living Room
-                  else if (index == 1)
-                    targetPage = 3; // Kitchen
-                  else if (index == 2)
-                    targetPage = 4; // Bedroom
-                  // Washroom (index 3) has no page yet
-
-                  return Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 15),
-                      child: GestureDetector(
-                        onTap: targetPage != null
-                            ? () {
-                                _pageController.animateToPage(
-                                  targetPage!,
-                                  duration: const Duration(milliseconds: 500),
-                                  curve: Curves.easeInOut,
-                                );
-                              }
-                            : () {
-                                // Show alert for Washroom (not implemented)
-                                showCupertinoDialog(
-                                  context: context,
-                                  builder: (BuildContext context) {
-                                    return CupertinoAlertDialog(
-                                      title: const Text('Coming Soon'),
-                                      content: const Padding(
-                                        padding: EdgeInsets.only(top: 8.0),
-                                        child: Text(
-                                          'The Washroom section has not been added yet. Stay tuned for future updates!',
-                                        ),
-                                      ),
-                                      actions: [
-                                        CupertinoDialogAction(
-                                          isDefaultAction: true,
-                                          onPressed: () {
-                                            Navigator.of(context).pop();
-                                          },
-                                          child: const Text('OK'),
-                                        ),
-                                      ],
-                                    );
-                                  },
-                                );
-                              },
-                        child: Column(
-                          children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(16),
-                              child: Image.asset(
-                                space['image']!,
-                                height: 180,
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              space['label']!,
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w400,
-                                color: primaryColor,
-                                fontFamily: 'GEG',
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // Screen 3: Living Room Screen
-  Widget _buildGalleryScreen(BuildContext context) {
-    final primaryColor = CupertinoTheme.of(context).primaryColor;
-
-    // Control items for the 3x3 grid with labels
-    // Each item is a Map with 'icon' (IconData or String path) and 'label' (String)
-    final List<Map<String, dynamic>> controlItems = [
-      {'icon': 'images/door_lock.png', 'label': 'Door Lock'},
-      {'icon': 'images/vdb.svg', 'label': 'VDB'},
-      {'icon': 'images/camera.png', 'label': 'Camera'},
-      {'icon': CupertinoIcons.lightbulb, 'label': 'Light'},
-      {'icon': CupertinoIcons.lightbulb, 'label': 'Light'},
-      {'icon': 'images/fan.png', 'label': 'Fan'},
-      {'icon': 'images/window_sensor.png', 'label': 'Window'},
-      {'icon': 'images/fire_sensor.png', 'label': 'Fire'},
-      {'icon': 'images/ac.png', 'label': 'AC'},
-    ];
-
-    return Container(
-      color: CupertinoColors.systemBackground,
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(40),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  // Back button - navigates to second slide (Features)
-                  GestureDetector(
-                    onTap: () {
-                      _pageController.animateToPage(
-                        1,
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.easeInOut,
-                      );
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: primaryColor, width: 1.5),
-                      ),
-                      child: Icon(
-                        CupertinoIcons.chevron_left,
-                        size: 20,
-                        color: primaryColor,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 30.0),
-                  Text(
-                    'Living Room',
-                    style: TextStyle(
-                      fontSize: 35,
-                      fontWeight: FontWeight.w500,
-                      color: primaryColor,
-                      fontFamily: 'GEG',
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 40),
-              Expanded(
-                child: Row(
-                  children: [
-                    // Left zone - Centered image with blast background
-                    Expanded(
-                      flex: 1,
-                      child: Center(
-                        child: Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            // Blast background image
-                            Image.asset(
-                              'images/blast.png',
-                              fit: BoxFit.contain,
-                            ),
-                            // Living room model on top
-                            Image.asset(
-                              'images/living_room_model.png',
-                              fit: BoxFit.contain,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 40),
-                    // Right zone - 3x3 grid of toggle buttons
-                    Expanded(
-                      flex: 1,
-                      child: Center(
-                        child: SizedBox(
-                          width: 442,
-                          height: 600,
-                          child: GridView.builder(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            gridDelegate:
-                                const SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 3,
-                                  mainAxisSpacing: 30,
-                                  crossAxisSpacing: 80,
-                                  childAspectRatio: 0.65,
-                                ),
-                            itemCount: 9,
-                            itemBuilder: (context, index) {
-                              final isGreen = _livingRoomStatus[index] == 2;
-                              final item = controlItems[index];
-                              return GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    _livingRoomToggles[index] =
-                                        !_livingRoomToggles[index];
-                                    // Toggle status between red(1) and green(2), keep grey(0) as is
-                                    if (_livingRoomStatus[index] != 0) {
-                                      _livingRoomStatus[index] =
-                                          _livingRoomStatus[index] == 1 ? 2 : 1;
-                                    }
-                                  });
-                                },
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Expanded(
-                                      flex: 4,
-                                      child: Container(
-                                        padding: const EdgeInsets.all(3),
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          border: Border.all(
-                                            color: _getStatusColor(
-                                              _livingRoomStatus[index],
-                                            ),
-                                            width: 2,
-                                          ),
-                                        ),
-                                        child: AnimatedContainer(
-                                          duration: const Duration(
-                                            milliseconds: 200,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            color: isGreen
-                                                ? primaryColor.withOpacity(0.15)
-                                                : CupertinoColors.systemGrey5,
-                                            border: Border.all(
-                                              color: isGreen
-                                                  ? primaryColor
-                                                  : CupertinoColors.systemGrey3,
-                                              width: 1,
-                                            ),
-                                          ),
-                                          child: Center(
-                                            child: _buildControlItem(
-                                              item['icon'],
-                                              isGreen,
-                                              primaryColor,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Flexible(
-                                      flex: 1,
-                                      child: Text(
-                                        item['label'],
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          color: isGreen
-                                              ? primaryColor
-                                              : CupertinoColors.systemGrey,
-                                          fontFamily: 'GEG',
-                                        ),
-                                        textAlign: TextAlign.center,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // Helper method to render either icon or custom image (PNG/SVG)
-  Widget _buildControlItem(dynamic item, bool isEnabled, Color primaryColor) {
-    if (item is IconData) {
-      // Render as icon
-      return Icon(
-        item,
-        size: 28,
-        color: isEnabled ? primaryColor : CupertinoColors.systemGrey,
-      );
-    } else if (item is String) {
-      // Check if it's an SVG file
-      if (item.toLowerCase().endsWith('.svg')) {
-        // Render as SVG
-        return SvgPicture.asset(
-          item,
-          width: 28,
-          height: 28,
-          fit: BoxFit.contain,
-          allowDrawingOutsideViewBox: true,
-          colorFilter: ColorFilter.mode(
-            isEnabled ? primaryColor : CupertinoColors.systemGrey,
-            BlendMode.srcIn,
-          ),
-        );
-      } else {
-        // Render as regular image (PNG, JPG, etc.)
-        return Image.asset(
-          item,
-          width: 38,
-          height: 38,
-          color: isEnabled ? primaryColor : CupertinoColors.systemGrey,
-          fit: BoxFit.contain,
-        );
+  /// Handle living room control tap
+  void _handleLivingRoomTap(int index) {
+    print('[DEBUG] Living room item $index tapped');
+    setState(() {
+      _livingRoomToggles[index] = !_livingRoomToggles[index];
+      if (_livingRoomStatus[index] != 0) {
+        _livingRoomStatus[index] = _livingRoomStatus[index] == 1 ? 2 : 1;
       }
-    }
-    // Fallback to empty container if type is unknown
-    return const SizedBox.shrink();
+    });
   }
 
-  // Helper method to get status color
-  // 0 = grey, 1 = red, 2 = green
-  Color _getStatusColor(int status) {
-    switch (status) {
-      case 0:
-        return CupertinoColors.systemGrey;
-      case 1:
-        return CupertinoColors.systemRed;
-      case 2:
-        return CupertinoColors.systemGreen;
-      default:
-        return CupertinoColors.systemGrey;
-    }
+  /// Handle kitchen control tap
+  void _handleKitchenTap(int index) {
+    print('[DEBUG] Kitchen item $index tapped');
+    setState(() {
+      _kitchenToggles[index] = !_kitchenToggles[index];
+      if (_kitchenStatus[index] != 0) {
+        _kitchenStatus[index] = _kitchenStatus[index] == 1 ? 2 : 1;
+      }
+    });
   }
 
-  // Screen 4: Kitchen Screen
-  Widget _buildAboutScreen(BuildContext context) {
-    final primaryColor = CupertinoTheme.of(context).primaryColor;
-
-    // Control items for the 3x2 grid with labels
-    final List<Map<String, dynamic>> kitchenControlItems = [
-      {'icon': 'images/window_sensor.png', 'label': 'Window'},
-      {'icon': 'images/gas_sensor.png', 'label': 'Gas Sensor'},
-      {'icon': 'images/chimney.png', 'label': 'Chimney'},
-      {'icon': CupertinoIcons.lightbulb, 'label': 'Light'},
-      {'icon': CupertinoIcons.lightbulb, 'label': 'Light'},
-      {'icon': 'images/fan.png', 'label': 'Fan'},
-    ];
-
-    return Container(
-      color: CupertinoColors.systemBackground,
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(40),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  // Back button - navigates to Living Room (page 2)
-                  GestureDetector(
-                    onTap: () {
-                      _pageController.animateToPage(
-                        1,
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.easeInOut,
-                      );
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: primaryColor, width: 1.5),
-                      ),
-                      child: Icon(
-                        CupertinoIcons.chevron_left,
-                        size: 20,
-                        color: primaryColor,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 30.0),
-                  Text(
-                    'Kitchen',
-                    style: TextStyle(
-                      fontSize: 35,
-                      fontWeight: FontWeight.w500,
-                      color: primaryColor,
-                      fontFamily: 'GEG',
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 40),
-              Expanded(
-                child: Row(
-                  children: [
-                    // Left zone - Centered image with blast background
-                    Expanded(
-                      flex: 1,
-                      child: Center(
-                        child: Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            Image.asset(
-                              'images/blast.png',
-                              fit: BoxFit.contain,
-                            ),
-                            Image.asset(
-                              'images/kitchen_model.png',
-                              fit: BoxFit.contain,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 40),
-                    // Right zone - 3x2 grid of toggle buttons
-                    Expanded(
-                      flex: 1,
-                      child: Center(
-                        child: SizedBox(
-                          width: 442,
-                          height: 380,
-                          child: GridView.builder(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            gridDelegate:
-                                const SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 3,
-                                  mainAxisSpacing: 30,
-                                  crossAxisSpacing: 80,
-                                  childAspectRatio: 0.65,
-                                ),
-                            itemCount: 6,
-                            itemBuilder: (context, index) {
-                              final isGreen = _kitchenStatus[index] == 2;
-                              final item = kitchenControlItems[index];
-                              return GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    _kitchenToggles[index] =
-                                        !_kitchenToggles[index];
-                                    // Toggle status between red(1) and green(2), keep grey(0) as is
-                                    if (_kitchenStatus[index] != 0) {
-                                      _kitchenStatus[index] =
-                                          _kitchenStatus[index] == 1 ? 2 : 1;
-                                    }
-                                  });
-                                },
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Expanded(
-                                      flex: 4,
-                                      child: Container(
-                                        padding: const EdgeInsets.all(3),
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          border: Border.all(
-                                            color: _getStatusColor(
-                                              _kitchenStatus[index],
-                                            ),
-                                            width: 2,
-                                          ),
-                                        ),
-                                        child: AnimatedContainer(
-                                          duration: const Duration(
-                                            milliseconds: 200,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            color: isGreen
-                                                ? primaryColor.withOpacity(0.15)
-                                                : CupertinoColors.systemGrey5,
-                                            border: Border.all(
-                                              color: isGreen
-                                                  ? primaryColor
-                                                  : CupertinoColors.systemGrey3,
-                                              width: 1,
-                                            ),
-                                          ),
-                                          child: Center(
-                                            child: _buildControlItem(
-                                              item['icon'],
-                                              isGreen,
-                                              primaryColor,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Flexible(
-                                      flex: 1,
-                                      child: Text(
-                                        item['label'],
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          color: isGreen
-                                              ? primaryColor
-                                              : CupertinoColors.systemGrey,
-                                          fontFamily: 'GEG',
-                                        ),
-                                        textAlign: TextAlign.center,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+  /// Handle bedroom control tap
+  void _handleBedroomTap(int index) {
+    print('[DEBUG] Bedroom item $index tapped');
+    setState(() {
+      _bedroomToggles[index] = !_bedroomToggles[index];
+      if (_bedroomStatus[index] != 0) {
+        _bedroomStatus[index] = _bedroomStatus[index] == 1 ? 2 : 1;
+      }
+    });
   }
 
-  // Screen 5: Bedroom Screen
-  Widget _buildContactScreen(BuildContext context) {
-    final primaryColor = CupertinoTheme.of(context).primaryColor;
-
-    // Control items for the 3x2 grid with labels
-    final List<Map<String, dynamic>> bedroomControlItems = [
-      {'icon': 'images/window_sensor.png', 'label': 'Window'},
-      {'icon': 'images/fire_sensor.png', 'label': 'Fire'},
-      {'icon': 'images/ac.png', 'label': 'AC'},
-      {'icon': CupertinoIcons.bed_double, 'label': 'Bed'},
-      {'icon': 'images/window_sensor.png', 'label': 'Window'},
-      {'icon': CupertinoIcons.lightbulb, 'label': 'Light'},
-    ];
-
-    return Container(
-      color: CupertinoColors.systemBackground,
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(40),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  // Back button - navigates to Living Room (page 2)
-                  GestureDetector(
-                    onTap: () {
-                      _pageController.animateToPage(
-                        1,
-                        duration: const Duration(milliseconds: 500),
-                        curve: Curves.easeInOut,
-                      );
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: primaryColor, width: 1.5),
-                      ),
-                      child: Icon(
-                        CupertinoIcons.chevron_left,
-                        size: 20,
-                        color: primaryColor,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 30.0),
-                  Text(
-                    'Bedroom',
-                    style: TextStyle(
-                      fontSize: 35,
-                      fontWeight: FontWeight.w500,
-                      color: primaryColor,
-                      fontFamily: 'GEG',
-                    ),
-                  ),
-                ],
+  /// Build page indicator dots
+  Widget _buildPageIndicator() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: List.generate(5, (index) {
+          final isActive = _currentPage == index;
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: 8,
+              height: isActive ? 24 : 8,
+              decoration: BoxDecoration(
+                color: isActive
+                    ? CupertinoTheme.of(context).primaryColor
+                    : CupertinoColors.systemGrey3,
+                borderRadius: BorderRadius.circular(4),
               ),
-              const SizedBox(height: 40),
-              Expanded(
-                child: Row(
-                  children: [
-                    // Left zone - Centered image with blast background
-                    Expanded(
-                      flex: 1,
-                      child: Center(
-                        child: Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            Image.asset(
-                              'images/blast.png',
-                              fit: BoxFit.contain,
-                            ),
-                            Image.asset(
-                              'images/bedroom_model.png',
-                              fit: BoxFit.contain,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 40),
-                    // Right zone - 3x2 grid of toggle buttons
-                    Expanded(
-                      flex: 1,
-                      child: Center(
-                        child: SizedBox(
-                          width: 442,
-                          height: 380,
-                          child: GridView.builder(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            gridDelegate:
-                                const SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 3,
-                                  mainAxisSpacing: 30,
-                                  crossAxisSpacing: 80,
-                                  childAspectRatio: 0.65,
-                                ),
-                            itemCount: 6,
-                            itemBuilder: (context, index) {
-                              final isGreen = _bedroomStatus[index] == 2;
-                              final item = bedroomControlItems[index];
-                              return GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    _bedroomToggles[index] =
-                                        !_bedroomToggles[index];
-                                    // Toggle status between red(1) and green(2), keep grey(0) as is
-                                    if (_bedroomStatus[index] != 0) {
-                                      _bedroomStatus[index] =
-                                          _bedroomStatus[index] == 1 ? 2 : 1;
-                                    }
-                                  });
-                                },
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Expanded(
-                                      flex: 4,
-                                      child: Container(
-                                        padding: const EdgeInsets.all(3),
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          border: Border.all(
-                                            color: _getStatusColor(
-                                              _bedroomStatus[index],
-                                            ),
-                                            width: 2,
-                                          ),
-                                        ),
-                                        child: AnimatedContainer(
-                                          duration: const Duration(
-                                            milliseconds: 200,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            color: isGreen
-                                                ? primaryColor.withOpacity(0.15)
-                                                : CupertinoColors.systemGrey5,
-                                            border: Border.all(
-                                              color: isGreen
-                                                  ? primaryColor
-                                                  : CupertinoColors.systemGrey3,
-                                              width: 1,
-                                            ),
-                                          ),
-                                          child: Center(
-                                            child: _buildControlItem(
-                                              item['icon'],
-                                              isGreen,
-                                              primaryColor,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Flexible(
-                                      flex: 1,
-                                      child: Text(
-                                        item['label'],
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          color: isGreen
-                                              ? primaryColor
-                                              : CupertinoColors.systemGrey,
-                                          fontFamily: 'GEG',
-                                        ),
-                                        textAlign: TextAlign.center,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-              // Home button at the bottom center
-              Center(
-                child: GestureDetector(
-                  onTap: () {
-                    _pageController.animateToPage(
-                      0,
-                      duration: const Duration(milliseconds: 500),
-                      curve: Curves.easeInOut,
-                    );
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: primaryColor, width: 1.5),
-                    ),
-                    child: Icon(
-                      CupertinoIcons.home,
-                      size: 24,
-                      color: primaryColor,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+            ),
+          );
+        }),
       ),
     );
   }
