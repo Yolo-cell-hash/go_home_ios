@@ -28,6 +28,8 @@ Future<void> _requestAllPermissions() async {
     Permission.locationWhenInUse,
     Permission.notification,
     Permission.storage,
+    Permission.camera,
+    Permission.microphone,
   ];
 
   await permissions.request();
