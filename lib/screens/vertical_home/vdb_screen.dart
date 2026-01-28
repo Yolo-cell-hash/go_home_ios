@@ -686,7 +686,7 @@ class _VDBScreenState extends State<VDBScreen> with WidgetsBindingObserver {
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   _buildElegantButton(
-                    icon: CupertinoIcons.camera_fill,
+                    imagePath: 'images/privacy_mode.png',
                     label: 'Capture',
                     primaryColor: primaryColor,
                     isLoading: _isCapturing,
@@ -714,7 +714,7 @@ class _VDBScreenState extends State<VDBScreen> with WidgetsBindingObserver {
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   _buildElegantButton(
-                    icon: CupertinoIcons.play_circle_fill,
+                    icon: CupertinoIcons.camera_fill,
                     label: 'Feed',
                     primaryColor: primaryColor,
                     isEnabled: true,
@@ -726,7 +726,7 @@ class _VDBScreenState extends State<VDBScreen> with WidgetsBindingObserver {
                     },
                   ),
                   _buildElegantButton(
-                    icon: CupertinoIcons.arrow_counterclockwise,
+                    imagePath: 'images/activity_trail.png',
                     label: 'Activity Trail',
                     primaryColor: primaryColor,
                     isEnabled: true,
@@ -747,7 +747,8 @@ class _VDBScreenState extends State<VDBScreen> with WidgetsBindingObserver {
   }
 
   Widget _buildElegantButton({
-    required IconData icon,
+    IconData? icon,
+    String? imagePath,
     required String label,
     required Color primaryColor,
     required VoidCallback onTap,
@@ -774,7 +775,12 @@ class _VDBScreenState extends State<VDBScreen> with WidgetsBindingObserver {
               ),
               child: isLoading
                   ? const CupertinoActivityIndicator(color: Colors.white)
-                  : Icon(icon, color: Colors.white, size: 32),
+                  : (imagePath != null
+                        ? Padding(
+                            padding: const EdgeInsets.all(18.0),
+                            child: Image.asset(imagePath, color: Colors.white),
+                          )
+                        : Icon(icon, color: Colors.white, size: 32)),
             ),
             const SizedBox(height: 15),
             Text(

@@ -7,6 +7,7 @@ import 'package:flutter/cupertino.dart';
 /// Displays preset scenes (morning, night, party, vacation) and room navigation
 class HomeScenesScreenWidget extends StatelessWidget {
   final int selectedScene; // Currently selected scene index (-1 for none)
+  final bool isLoading; // Loading state for scene selection
   final Function(int index) onSceneSelected; // Callback when scene is tapped
   final Function(int pageIndex) onSpaceNavigate; // Navigate to room page
   final Function() onWashroomTap; // Show alert for washroom
@@ -14,6 +15,7 @@ class HomeScenesScreenWidget extends StatelessWidget {
   const HomeScenesScreenWidget({
     super.key,
     required this.selectedScene,
+    required this.isLoading,
     required this.onSceneSelected,
     required this.onSpaceNavigate,
     required this.onWashroomTap,
@@ -113,13 +115,33 @@ class HomeScenesScreenWidget extends StatelessWidget {
                           ? Border.all(color: primaryColor, width: 5)
                           : null,
                     ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: Image.asset(
-                        scene['image']!,
-                        height: 180,
-                        fit: BoxFit.cover,
-                      ),
+                    child: Stack(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: Image.asset(
+                            scene['image']!,
+                            height: 180,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                        // Show loading indicator on selected scene
+                        if (isSelected && isLoading)
+                          Positioned.fill(
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(16),
+                              child: Container(
+                                color: CupertinoColors.black.withOpacity(0.5),
+                                child: const Center(
+                                  child: CupertinoActivityIndicator(
+                                    radius: 20,
+                                    color: CupertinoColors.white,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 16),

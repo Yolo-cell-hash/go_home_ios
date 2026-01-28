@@ -70,7 +70,7 @@ class _DoorLockScreenState extends State<DoorLockScreen> {
                         ),
                         child: Center(
                           child: Image.asset(
-                            'images/door_lock_icon.png',
+                            'images/door_lock.png',
                             width: 28,
                             height: 28,
                             fit: BoxFit.contain,
@@ -695,20 +695,30 @@ class _DoorLockScreenState extends State<DoorLockScreen> {
     final appState = Provider.of<AppState>(context, listen: false);
 
     if (appState.accessToken.isEmpty || appState.lockID.isEmpty) {
-      // Not authenticated - just toggle the local state
-      setState(() {
-        isLocked = !isLocked;
-      });
-      // Auto-lock after 8 seconds even for local toggle
-      if (!isLocked) {
-        Future.delayed(const Duration(seconds: 8), () {
-          if (mounted && !isLocked) {
-            setState(() {
-              isLocked = true;
-            });
-          }
-        });
-      }
+      // Not authenticated - show authentication failure alert
+      showCupertinoDialog(
+        context: context,
+        builder: (BuildContext dialogContext) {
+          return CupertinoAlertDialog(
+            title: const Text('Authentication Failure'),
+            content: const Padding(
+              padding: EdgeInsets.only(top: 8.0),
+              child: Text(
+                'Please verify OTP and get lock list before attempting to unlock the door.',
+              ),
+            ),
+            actions: [
+              CupertinoDialogAction(
+                isDefaultAction: true,
+                onPressed: () {
+                  Navigator.of(dialogContext).pop();
+                },
+                child: const Text('OK'),
+              ),
+            ],
+          );
+        },
+      );
       return;
     }
 

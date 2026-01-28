@@ -50,6 +50,9 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
   // Selected home scene preset (0-3 for the 4 options, -1 for none)
   int _selectedHomeScene = -1;
 
+  // Loading state for scene selection
+  bool _isSceneLoading = false;
+
   // Status colors for icons: 0=grey (inactive/no sync), 1=red (false), 2=green (true)
   // Welcome screen icons (3) - synced with Firebase (door-lock, vdb, camera)
   late List<int> _welcomeIconStatus = [2, 1, 2]; // green, red, green
@@ -327,6 +330,7 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
               // Screen 2: Home Scenes & Spaces
               HomeScenesScreenWidget(
                 selectedScene: _selectedHomeScene,
+                isLoading: _isSceneLoading,
                 onSceneSelected: _handleSceneSelected,
                 onSpaceNavigate: _handleSpaceNavigate,
                 onWashroomTap: _showWashroomAlert,
@@ -430,12 +434,57 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
     ).push(CupertinoPageRoute(builder: (context) => targetScreen));
   }
 
-  /// Handle home scene selection
-  void _handleSceneSelected(int index) {
+  /// Handle home scene selection with loading and success alert
+  void _handleSceneSelected(int index) async {
     print('[DEBUG] Scene $index selected');
+
+    // Scene names for the alert
+    const sceneNames = [
+      'Good Morning',
+      'Good Night',
+      'House Party',
+      'Vaccation',
+    ];
+
+    // Set loading state and selected scene
     setState(() {
       _selectedHomeScene = index;
+      _isSceneLoading = true;
     });
+
+    // Show loading for 2 seconds
+    await Future.delayed(const Duration(seconds: 2));
+
+    setState(() {
+      _isSceneLoading = false;
+    });
+
+    // Show success alert
+    if (mounted) {
+      showCupertinoDialog(
+        context: context,
+        builder: (BuildContext dialogContext) {
+          return CupertinoAlertDialog(
+            title: const Text('Success'),
+            content: Padding(
+              padding: const EdgeInsets.only(top: 8.0),
+              child: Text(
+                '${sceneNames[index]} scene has been set successfully.',
+              ),
+            ),
+            actions: [
+              CupertinoDialogAction(
+                isDefaultAction: true,
+                onPressed: () {
+                  Navigator.of(dialogContext).pop();
+                },
+                child: const Text('OK'),
+              ),
+            ],
+          );
+        },
+      );
+    }
   }
 
   /// Handle home space navigation
@@ -581,17 +630,20 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: List.generate(5, (index) {
           final isActive = _currentPage == index;
-          return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              width: 8,
-              height: isActive ? 24 : 8,
-              decoration: BoxDecoration(
-                color: isActive
-                    ? CupertinoTheme.of(context).primaryColor
-                    : CupertinoColors.systemGrey3,
-                borderRadius: BorderRadius.circular(4),
+          return GestureDetector(
+            onTap: () => _navigateToPage(index),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: 8,
+                height: isActive ? 24 : 8,
+                decoration: BoxDecoration(
+                  color: isActive
+                      ? CupertinoTheme.of(context).primaryColor
+                      : CupertinoColors.systemGrey3,
+                  borderRadius: BorderRadius.circular(4),
+                ),
               ),
             ),
           );
