@@ -32,7 +32,12 @@ class _CameraScreenState extends State<CameraScreen> {
           Expanded(
             child: Container(
               color: CupertinoColors.systemBackground,
-              padding: EdgeInsets.symmetric(horizontal: 60.0, vertical: 30.0),
+              padding: EdgeInsets.only(
+                left: 60.0,
+                top: 30.0,
+                bottom: 30.0,
+                right: 0.0,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -46,10 +51,10 @@ class _CameraScreenState extends State<CameraScreen> {
                           color: primaryColor,
                           shape: BoxShape.circle,
                         ),
-                        child: Icon(
-                          CupertinoIcons.camera_fill,
-                          color: Colors.white,
-                          size: 28,
+                        child: Image.asset(
+                          'images/small_cctv.png',
+                          height: 28.0,
+                          width: 28.0,
                         ),
                       ),
                       SizedBox(width: 15),
@@ -175,73 +180,78 @@ class _CameraScreenState extends State<CameraScreen> {
                         // Right section: Elegant control buttons grid
                         Expanded(
                           flex: 3,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Color(0xFFF5F0EB), // Warm beige background
-                              borderRadius: BorderRadius.circular(25),
-                            ),
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 40,
-                              vertical: 50,
-                            ),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                // First row: Capture & Record
-                                Expanded(
-                                  child: Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceEvenly,
-                                    children: [
-                                      _buildElegantButton(
-                                        icon: CupertinoIcons.lock_fill,
-                                        label: 'Capture',
-                                        primaryColor: primaryColor,
-                                        onTap: () {
-                                          // Handle capture
-                                        },
-                                      ),
-                                      _buildElegantButton(
-                                        icon: CupertinoIcons.videocam_fill,
-                                        label: 'Record',
-                                        primaryColor: primaryColor,
-                                        onTap: () {
-                                          setState(() {
-                                            isRecording = !isRecording;
-                                          });
-                                        },
-                                      ),
-                                    ],
+                          child: Center(
+                            child: Container(
+                              height: 400.0,
+                              decoration: BoxDecoration(
+                                color: Color(
+                                  0xFFF5F0EB,
+                                ), // Warm beige background
+                                borderRadius: BorderRadius.circular(25),
+                              ),
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 40,
+                                vertical: 50,
+                              ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  // First row: Capture & Record
+                                  Expanded(
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceEvenly,
+                                      children: [
+                                        _buildElegantButton(
+                                          imagePath: 'images/privacy_mode.png',
+                                          label: 'Capture',
+                                          primaryColor: primaryColor,
+                                          onTap: () {
+                                            // Handle capture
+                                          },
+                                        ),
+                                        _buildElegantButton(
+                                          icon: CupertinoIcons.videocam_fill,
+                                          label: 'Record',
+                                          primaryColor: primaryColor,
+                                          onTap: () {
+                                            setState(() {
+                                              isRecording = !isRecording;
+                                            });
+                                          },
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                ),
 
-                                // Second row: Feed & Activity Trail
-                                Expanded(
-                                  child: Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceEvenly,
-                                    children: [
-                                      _buildElegantButton(
-                                        icon: CupertinoIcons.camera_fill,
-                                        label: 'Feed',
-                                        primaryColor: primaryColor,
-                                        onTap: () {
-                                          // Handle feed
-                                        },
-                                      ),
-                                      _buildElegantButton(
-                                        icon: CupertinoIcons
-                                            .arrow_counterclockwise,
-                                        label: 'Activity Trail',
-                                        primaryColor: primaryColor,
-                                        onTap: () {
-                                          // Handle activity trail
-                                        },
-                                      ),
-                                    ],
+                                  // Second row: Feed & Activity Trail
+                                  Expanded(
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceEvenly,
+                                      children: [
+                                        _buildElegantButton(
+                                          icon: CupertinoIcons.camera_fill,
+                                          label: 'Feed',
+                                          primaryColor: primaryColor,
+                                          onTap: () {
+                                            // Handle feed
+                                          },
+                                        ),
+                                        _buildElegantButton(
+                                          imagePath:
+                                              'images/activity_trail.png',
+                                          label: 'Activity Trail',
+                                          primaryColor: primaryColor,
+                                          onTap: () {
+                                            // Handle activity trail
+                                          },
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
                         ),
@@ -258,7 +268,8 @@ class _CameraScreenState extends State<CameraScreen> {
   }
 
   Widget _buildElegantButton({
-    required IconData icon,
+    IconData? icon,
+    String? imagePath,
     required String label,
     required Color primaryColor,
     required VoidCallback onTap,
@@ -275,7 +286,12 @@ class _CameraScreenState extends State<CameraScreen> {
               color: primaryColor,
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: Colors.white, size: 32),
+            child: imagePath != null
+                ? Padding(
+                    padding: const EdgeInsets.all(18.0),
+                    child: Image.asset(imagePath, color: Colors.white),
+                  )
+                : Icon(icon, color: Colors.white, size: 32),
           ),
           SizedBox(height: 15),
           Text(
