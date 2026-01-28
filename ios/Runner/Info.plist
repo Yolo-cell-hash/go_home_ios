@@ -45,5 +45,13 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Camera access is required for video door bell functionality</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Microphone access is required for video door bell functionality</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Photo library access is required to save captured images and videos</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Photo library access is required to save captured images and videos</string>
 </dict>
 </plist>
