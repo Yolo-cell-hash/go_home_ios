@@ -53,6 +53,8 @@ dependencies:
   flutter_webrtc: ^0.12.12
   path_provider: ^2.1.1
   quickalert: ^1.1.0
+  fluttertoast: ^9.0.0
+
 
 dev_dependencies:
   flutter_test:

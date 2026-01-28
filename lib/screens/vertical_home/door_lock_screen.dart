@@ -4,6 +4,9 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:godrej_home/widgets/navbar_setup.dart';
+import 'package:godrej_home/utils/web_api.dart';
+import 'package:godrej_home/utils/app_state.dart';
+import 'package:provider/provider.dart';
 import 'dart:math' as math;
 
 /// Door lock control screen
@@ -19,6 +22,16 @@ class _DoorLockScreenState extends State<DoorLockScreen> {
   bool privacyMode = false;
   bool passageMode = false;
   double batteryLevel = 0.75; // 75% battery
+  bool isUnlocking = false; // Loading state for unlock operation
+
+  // WebApi instance
+  final WebApi _webApi = WebApi();
+
+  // Controllers for API menu
+  final TextEditingController _phoneController = TextEditingController(
+    text: '8806435774',
+  );
+  final TextEditingController _otpController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
@@ -36,7 +49,12 @@ class _DoorLockScreenState extends State<DoorLockScreen> {
           Expanded(
             child: Container(
               color: CupertinoColors.systemBackground,
-              padding: EdgeInsets.symmetric(horizontal: 60.0, vertical: 30.0),
+              padding: const EdgeInsets.only(
+                left: 60.0,
+                right: 0.0,
+                top: 30.0,
+                bottom: 30.0,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -50,19 +68,33 @@ class _DoorLockScreenState extends State<DoorLockScreen> {
                           color: primaryColor,
                           shape: BoxShape.circle,
                         ),
-                        child: Icon(
-                          CupertinoIcons.lock_fill,
-                          color: Colors.white,
-                          size: 28,
+                        child: Center(
+                          child: Image.asset(
+                            'images/door_lock_icon.png',
+                            width: 28,
+                            height: 28,
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) {
+                              return const Icon(
+                                CupertinoIcons.lock_fill,
+                                color: Colors.white,
+                                size: 28,
+                              );
+                            },
+                          ),
                         ),
                       ),
+
                       SizedBox(width: 15),
-                      Text(
-                        'Door Lock - Advantis IoT 9',
-                        style: TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.w600,
-                          color: CupertinoColors.black,
+                      GestureDetector(
+                        onDoubleTap: () => _showApiMenu(context, primaryColor),
+                        child: Text(
+                          'Door Lock - Advantis IoT 9',
+                          style: TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.w600,
+                            color: CupertinoColors.black,
+                          ),
                         ),
                       ),
                     ],
@@ -148,31 +180,47 @@ class _DoorLockScreenState extends State<DoorLockScreen> {
                                       children: [
                                         // Large circular lock button
                                         GestureDetector(
-                                          onTap: () {
-                                            setState(() {
-                                              isLocked = !isLocked;
-                                            });
-                                          },
+                                          onTap: () => _unlockViaApi(),
                                           child: Container(
-                                            width: 160,
-                                            height: 160,
+                                            width: 180,
+                                            height: 180,
                                             decoration: BoxDecoration(
                                               shape: BoxShape.circle,
                                               border: Border.all(
-                                                color: Color(
-                                                  0xFF8BC34A,
-                                                ), // Green border
+                                                color: isUnlocking
+                                                    ? CupertinoColors
+                                                          .systemYellow
+                                                    : (isLocked
+                                                          ? CupertinoColors
+                                                                .systemRed
+                                                          : Color(0xFF4CAF50)),
                                                 width: 4,
                                               ),
-                                              color: primaryColor,
+                                              color: Colors.transparent,
                                             ),
-                                            child: Icon(
-                                              isLocked
-                                                  ? CupertinoIcons.lock_fill
-                                                  : CupertinoIcons
-                                                        .lock_open_fill,
-                                              color: Colors.white,
-                                              size: 70,
+                                            child: Center(
+                                              child: Container(
+                                                width: 150,
+                                                height: 150,
+                                                decoration: BoxDecoration(
+                                                  shape: BoxShape.circle,
+                                                  color: primaryColor,
+                                                ),
+                                                child: isUnlocking
+                                                    ? const CupertinoActivityIndicator(
+                                                        radius: 30,
+                                                        color: Colors.white,
+                                                      )
+                                                    : Icon(
+                                                        isLocked
+                                                            ? CupertinoIcons
+                                                                  .lock_fill
+                                                            : CupertinoIcons
+                                                                  .lock_open_fill,
+                                                        color: Colors.white,
+                                                        size: 70,
+                                                      ),
+                                              ),
                                             ),
                                           ),
                                         ),
@@ -186,21 +234,27 @@ class _DoorLockScreenState extends State<DoorLockScreen> {
                                               width: 12,
                                               height: 12,
                                               decoration: BoxDecoration(
-                                                color: isLocked
-                                                    ? Color(0xFF4CAF50)
-                                                    : Colors.orange,
+                                                color: isUnlocking
+                                                    ? CupertinoColors
+                                                          .systemYellow
+                                                    : (isLocked
+                                                          ? CupertinoColors
+                                                                .systemRed
+                                                          : Color(0xFF4CAF50)),
                                                 shape: BoxShape.circle,
                                               ),
                                             ),
                                             SizedBox(width: 8),
                                             Text(
-                                              isLocked ? 'Locked' : 'Unlocked',
+                                              isUnlocking
+                                                  ? 'Unlocking...'
+                                                  : (isLocked
+                                                        ? 'Locked'
+                                                        : 'Unlocked'),
                                               style: TextStyle(
                                                 fontSize: 18,
                                                 fontWeight: FontWeight.w500,
-                                                color: isLocked
-                                                    ? Color(0xFF4CAF50)
-                                                    : Colors.orange,
+                                                color: primaryColor,
                                               ),
                                             ),
                                           ],
@@ -218,22 +272,32 @@ class _DoorLockScreenState extends State<DoorLockScreen> {
                         // Right section: Control buttons grid
                         Expanded(
                           flex: 3,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Color(0xFFF5F5F5),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            padding: EdgeInsets.all(25),
-                            child: Column(
-                              children: [
-                                // First row: Privacy Mode & Passage Mode
-                                Expanded(
-                                  child: Row(
-                                    children: [
-                                      Expanded(
-                                        child: _buildControlCard(
-                                          icon: CupertinoIcons
-                                              .person_crop_circle_badge_minus,
+                          child: Align(
+                            alignment: Alignment.centerRight,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF5F0EB),
+                                borderRadius: const BorderRadius.only(
+                                  topLeft: Radius.circular(25),
+                                  bottomLeft: Radius.circular(25),
+                                ),
+                              ),
+                              padding: const EdgeInsets.only(
+                                left: 20,
+                                top: 25,
+                                bottom: 25,
+                                right: 0,
+                              ),
+                              child: Column(
+                                children: [
+                                  // First row: Privacy Mode & Passage Mode
+                                  Expanded(
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceEvenly,
+                                      children: [
+                                        _buildControlCard(
+                                          imagePath: 'images/privacy_mode.png',
                                           label: 'Privacy Mode',
                                           isToggle: true,
                                           toggleValue: privacyMode,
@@ -244,12 +308,8 @@ class _DoorLockScreenState extends State<DoorLockScreen> {
                                           },
                                           primaryColor: primaryColor,
                                         ),
-                                      ),
-                                      SizedBox(width: 15),
-                                      Expanded(
-                                        child: _buildControlCard(
-                                          icon:
-                                              CupertinoIcons.square_arrow_right,
+                                        _buildControlCard(
+                                          imagePath: 'images/passage_mode.png',
                                           label: 'Passage Mode',
                                           isToggle: true,
                                           toggleValue: passageMode,
@@ -260,44 +320,41 @@ class _DoorLockScreenState extends State<DoorLockScreen> {
                                           },
                                           primaryColor: primaryColor,
                                         ),
-                                      ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
-                                ),
-                                SizedBox(height: 15),
+                                  const SizedBox(height: 15),
 
-                                // Second row: Tamper Alarm & Activity Trail
-                                Expanded(
-                                  child: Row(
-                                    children: [
-                                      Expanded(
-                                        child: _buildControlCard(
-                                          icon: CupertinoIcons.bell_fill,
+                                  // Second row: Tamper Alarm & Activity Trail
+                                  Expanded(
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceEvenly,
+                                      children: [
+                                        _buildControlCard(
+                                          imagePath: 'images/tamper_alarm.png',
                                           label: 'Tamper Alarm',
                                           isToggle: false,
                                           primaryColor: primaryColor,
                                         ),
-                                      ),
-                                      SizedBox(width: 15),
-                                      Expanded(
-                                        child: _buildControlCard(
-                                          icon: CupertinoIcons
-                                              .arrow_counterclockwise,
+                                        _buildControlCard(
+                                          imagePath:
+                                              'images/activity_trail.png',
                                           label: 'Activity Trail',
                                           isToggle: false,
                                           primaryColor: primaryColor,
                                         ),
-                                      ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
-                                ),
-                                SizedBox(height: 15),
+                                  const SizedBox(height: 15),
 
-                                // Battery level indicator
-                                Expanded(
-                                  child: _buildBatteryCard(primaryColor),
-                                ),
-                              ],
+                                  // Battery level indicator
+                                  Expanded(
+                                    child: _buildBatteryCard(primaryColor),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
@@ -314,7 +371,7 @@ class _DoorLockScreenState extends State<DoorLockScreen> {
   }
 
   Widget _buildControlCard({
-    required IconData icon,
+    required String imagePath,
     required String label,
     required bool isToggle,
     bool toggleValue = false,
@@ -324,20 +381,35 @@ class _DoorLockScreenState extends State<DoorLockScreen> {
     return Container(
       padding: EdgeInsets.symmetric(vertical: 15, horizontal: 10),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Colors.transparent,
         borderRadius: BorderRadius.circular(15),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            width: 55,
-            height: 55,
+            width: 70,
+            height: 70,
             decoration: BoxDecoration(
               color: primaryColor,
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: Colors.white, size: 28),
+            child: Center(
+              child: Image.asset(
+                imagePath,
+                width: 36,
+                height: 36,
+                fit: BoxFit.contain,
+                color: Colors.white,
+                errorBuilder: (context, error, stackTrace) {
+                  return Icon(
+                    CupertinoIcons.circle,
+                    color: Colors.white,
+                    size: 36,
+                  );
+                },
+              ),
+            ),
           ),
           SizedBox(height: 10),
           Text(
@@ -395,6 +467,279 @@ class _DoorLockScreenState extends State<DoorLockScreen> {
         ],
       ),
     );
+  }
+
+  // Hidden API menu - accessible via double-tap on title
+  void _showApiMenu(BuildContext context, Color primaryColor) {
+    showCupertinoModalPopup(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final appState = Provider.of<AppState>(context, listen: false);
+            final bool hasAccessToken = appState.accessToken.isNotEmpty;
+            final bool hasLockId = appState.lockID.isNotEmpty;
+
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.7,
+              decoration: BoxDecoration(
+                color: CupertinoColors.systemBackground.resolveFrom(context),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(25),
+                  topRight: Radius.circular(25),
+                ),
+              ),
+              child: Column(
+                children: [
+                  // Handle bar
+                  Container(
+                    margin: EdgeInsets.only(top: 12),
+                    width: 40,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: CupertinoColors.systemGrey3,
+                      borderRadius: BorderRadius.circular(2.5),
+                    ),
+                  ),
+                  SizedBox(height: 20),
+
+                  // Title
+                  Text(
+                    'Lock API Configuration',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: primaryColor,
+                    ),
+                  ),
+                  SizedBox(height: 20),
+
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: EdgeInsets.symmetric(horizontal: 20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // Status indicators
+                          Container(
+                            padding: EdgeInsets.all(15),
+                            decoration: BoxDecoration(
+                              color: CupertinoColors.systemGrey6,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Column(
+                              children: [
+                                _buildStatusRow('Access Token', hasAccessToken),
+                                SizedBox(height: 8),
+                                _buildStatusRow('Lock ID', hasLockId),
+                              ],
+                            ),
+                          ),
+                          SizedBox(height: 25),
+
+                          // Phone number input
+                          Text(
+                            'Phone Number',
+                            style: TextStyle(fontWeight: FontWeight.w500),
+                          ),
+                          SizedBox(height: 8),
+                          CupertinoTextField(
+                            controller: _phoneController,
+                            placeholder: 'Enter phone number',
+                            keyboardType: TextInputType.phone,
+                            padding: EdgeInsets.all(15),
+                            decoration: BoxDecoration(
+                              border: Border.all(
+                                color: CupertinoColors.systemGrey4,
+                              ),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          SizedBox(height: 15),
+
+                          // Request OTP button
+                          CupertinoButton(
+                            color: primaryColor,
+                            borderRadius: BorderRadius.circular(10),
+                            onPressed: () async {
+                              await _webApi.requestOTP(
+                                context,
+                                phoneNumber: _phoneController.text,
+                              );
+                              setDialogState(() {});
+                            },
+                            child: Text(
+                              'Request OTP',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                          ),
+                          SizedBox(height: 25),
+
+                          // OTP input
+                          Text(
+                            'OTP',
+                            style: TextStyle(fontWeight: FontWeight.w500),
+                          ),
+                          SizedBox(height: 8),
+                          CupertinoTextField(
+                            controller: _otpController,
+                            placeholder: 'Enter OTP',
+                            keyboardType: TextInputType.number,
+                            padding: EdgeInsets.all(15),
+                            decoration: BoxDecoration(
+                              border: Border.all(
+                                color: CupertinoColors.systemGrey4,
+                              ),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          SizedBox(height: 15),
+
+                          // Verify OTP button
+                          CupertinoButton(
+                            color: primaryColor,
+                            borderRadius: BorderRadius.circular(10),
+                            onPressed: () async {
+                              await _webApi.verifyOTP(
+                                context,
+                                phoneNumber: _phoneController.text,
+                                otp: _otpController.text,
+                              );
+                              setDialogState(() {});
+                            },
+                            child: Text(
+                              'Verify OTP',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                          ),
+                          SizedBox(height: 25),
+
+                          // Get Lock List button
+                          CupertinoButton(
+                            color: hasAccessToken
+                                ? CupertinoColors.activeGreen
+                                : CupertinoColors.systemGrey,
+                            borderRadius: BorderRadius.circular(10),
+                            onPressed: hasAccessToken
+                                ? () async {
+                                    await _webApi.getLockList(context);
+                                    setDialogState(() {});
+                                  }
+                                : null,
+                            child: Text(
+                              'Get Lock List',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                          ),
+                          SizedBox(height: 30),
+
+                          // Close button
+                          CupertinoButton(
+                            child: Text(
+                              'Close',
+                              style: TextStyle(
+                                color: CupertinoColors.systemRed,
+                              ),
+                            ),
+                            onPressed: () => Navigator.of(dialogContext).pop(),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildStatusRow(String label, bool isActive) {
+    return Row(
+      children: [
+        Container(
+          width: 12,
+          height: 12,
+          decoration: BoxDecoration(
+            color: isActive
+                ? CupertinoColors.activeGreen
+                : CupertinoColors.systemRed,
+            shape: BoxShape.circle,
+          ),
+        ),
+        SizedBox(width: 10),
+        Text(label),
+        Spacer(),
+        Text(
+          isActive ? 'Available' : 'Not Set',
+          style: TextStyle(
+            color: isActive
+                ? CupertinoColors.activeGreen
+                : CupertinoColors.systemGrey,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Method to unlock via API
+  Future<void> _unlockViaApi() async {
+    // Prevent unlock if already unlocked or currently unlocking
+    if (!isLocked || isUnlocking) {
+      return;
+    }
+
+    final appState = Provider.of<AppState>(context, listen: false);
+
+    if (appState.accessToken.isEmpty || appState.lockID.isEmpty) {
+      // Not authenticated - just toggle the local state
+      setState(() {
+        isLocked = !isLocked;
+      });
+      // Auto-lock after 8 seconds even for local toggle
+      if (!isLocked) {
+        Future.delayed(const Duration(seconds: 8), () {
+          if (mounted && !isLocked) {
+            setState(() {
+              isLocked = true;
+            });
+          }
+        });
+      }
+      return;
+    }
+
+    // Start loading animation
+    setState(() {
+      isUnlocking = true;
+    });
+
+    // Call unlock API
+    final result = await _webApi.unlockDoor(context);
+
+    setState(() {
+      isUnlocking = false;
+    });
+
+    if (result['success'] == true) {
+      // Unlock successful - update icon
+      setState(() {
+        isLocked = false;
+      });
+
+      // Auto-lock after 8 seconds
+      Future.delayed(const Duration(seconds: 8), () {
+        if (mounted && !isLocked) {
+          setState(() {
+            isLocked = true;
+          });
+        }
+      });
+    }
+    // If failed, the toast is already shown by WebApi, icon stays locked
   }
 }
 

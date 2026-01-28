@@ -36,7 +36,6 @@ class _VDBScreenState extends State<VDBScreen> with WidgetsBindingObserver {
   bool _isConnecting = true;
   bool _isConnected = false;
   bool _hasError = false;
-  String _statusMessage = 'Connecting...';
 
   // Recording state - using frame capture for iOS compatibility
   bool _isRecording = false;
@@ -83,25 +82,21 @@ class _VDBScreenState extends State<VDBScreen> with WidgetsBindingObserver {
             _isConnecting = true;
             _isConnected = false;
             _hasError = false;
-            _statusMessage = 'Connecting...';
             break;
           case VdbConnectionState.connected:
             _isConnecting = false;
             _isConnected = true;
             _hasError = false;
-            _statusMessage = 'Live';
             break;
           case VdbConnectionState.error:
             _isConnecting = false;
             _isConnected = false;
             _hasError = true;
-            _statusMessage = 'Connection failed';
             break;
           case VdbConnectionState.disconnected:
             _isConnecting = false;
             _isConnected = false;
             _hasError = false;
-            _statusMessage = 'Disconnected';
             break;
         }
       });
@@ -409,9 +404,11 @@ class _VDBScreenState extends State<VDBScreen> with WidgetsBindingObserver {
           Expanded(
             child: Container(
               color: CupertinoColors.systemBackground,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 60.0,
-                vertical: 30.0,
+              padding: const EdgeInsets.only(
+                left: 60.0,
+                right: 0.0,
+                top: 30.0,
+                bottom: 30.0,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -426,10 +423,13 @@ class _VDBScreenState extends State<VDBScreen> with WidgetsBindingObserver {
                           color: primaryColor,
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(
-                          CupertinoIcons.video_camera_solid,
-                          color: Colors.white,
-                          size: 28,
+                        child: Center(
+                          child: Image.asset(
+                            'images/vdb_icon.png',
+                            width: 28,
+                            height: 28,
+                            fit: BoxFit.contain,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 15),
@@ -441,9 +441,6 @@ class _VDBScreenState extends State<VDBScreen> with WidgetsBindingObserver {
                           color: CupertinoColors.black,
                         ),
                       ),
-                      const Spacer(),
-                      // Connection status indicator
-                      _buildConnectionStatusBadge(),
                     ],
                   ),
                   const SizedBox(height: 30),
@@ -470,49 +467,6 @@ class _VDBScreenState extends State<VDBScreen> with WidgetsBindingObserver {
                   ),
                 ],
               ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildConnectionStatusBadge() {
-    Color statusColor;
-    IconData statusIcon;
-
-    if (_isConnecting) {
-      statusColor = CupertinoColors.systemOrange;
-      statusIcon = CupertinoIcons.arrow_2_circlepath;
-    } else if (_isConnected) {
-      statusColor = CupertinoColors.activeGreen;
-      statusIcon = CupertinoIcons.checkmark_circle_fill;
-    } else if (_hasError) {
-      statusColor = CupertinoColors.destructiveRed;
-      statusIcon = CupertinoIcons.xmark_circle_fill;
-    } else {
-      statusColor = CupertinoColors.systemGrey;
-      statusIcon = CupertinoIcons.circle;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: statusColor.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: statusColor.withOpacity(0.3)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(statusIcon, color: statusColor, size: 18),
-          const SizedBox(width: 6),
-          Text(
-            _statusMessage,
-            style: TextStyle(
-              color: statusColor,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
             ),
           ),
         ],
@@ -688,10 +642,11 @@ class _VDBScreenState extends State<VDBScreen> with WidgetsBindingObserver {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              CupertinoIcons.video_camera_solid,
-              size: 80,
-              color: Colors.grey[600],
+            Image.asset(
+              'images/vdb_icon.png',
+              width: 28,
+              height: 28,
+              fit: BoxFit.contain,
             ),
             const SizedBox(height: 15),
             Text(
@@ -705,19 +660,22 @@ class _VDBScreenState extends State<VDBScreen> with WidgetsBindingObserver {
   }
 
   Widget _buildControlsSection(Color primaryColor) {
-    return Center(
+    return Align(
+      alignment: Alignment.centerRight,
       child: Container(
         height: 400.0,
-        width: 400.0,
         decoration: BoxDecoration(
           color: const Color(0xFFF5F0EB),
-          borderRadius: BorderRadius.circular(25),
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(25),
+            bottomLeft: Radius.circular(25),
+          ),
         ),
         padding: const EdgeInsets.only(
-          left: 40,
+          left: 20,
           top: 50,
           bottom: 50.0,
-          right: 40,
+          right: 0,
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
