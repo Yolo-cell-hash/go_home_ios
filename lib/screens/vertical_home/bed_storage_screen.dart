@@ -1,8 +1,6 @@
-// vertical_home/bed_storage_screen.dart
-// Bed Storage control screen
-
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:godrej_home/utils/ble_util.dart';
 import 'package:godrej_home/widgets/navbar_setup.dart';
 
 /// Bed Storage control screen
@@ -16,6 +14,42 @@ class BedStorageScreen extends StatefulWidget {
 class _BedStorageScreenState extends State<BedStorageScreen> {
   // Track selected button: 0=OPEN, 1=STOP, 2=CLOSE, -1=none
   int _selectedButton = -1;
+  final BleController _bleController = BleController();
+  String _statusMessage = "Initializing...";
+  bool _isConnected = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _bleController.initBle();
+    _bleController.statusStream.listen((status) {
+      if (mounted) {
+        setState(() {
+          _statusMessage = status;
+        });
+      }
+    });
+    _bleController.isConnectedStream.listen((connected) {
+      if (mounted) {
+        setState(() {
+          _isConnected = connected;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _bleController.dispose();
+    super.dispose();
+  }
+
+  void _handleCommand(int index, String command) {
+    setState(() {
+      _selectedButton = index;
+    });
+    _bleController.sendCommand(command);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -68,6 +102,19 @@ class _BedStorageScreenState extends State<BedStorageScreen> {
                           color: CupertinoColors.black,
                         ),
                       ),
+                      Spacer(),
+                      // Status Text
+                      Padding(
+                        padding: const EdgeInsets.only(right: 40.0),
+                        child: Text(
+                          _statusMessage,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: _isConnected ? Colors.green : Colors.grey,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                   SizedBox(height: 30),
@@ -114,33 +161,21 @@ class _BedStorageScreenState extends State<BedStorageScreen> {
                                         label: 'OPEN',
                                         primaryColor: primaryColor,
                                         isSelected: _selectedButton == 0,
-                                        onTap: () {
-                                          setState(() {
-                                            _selectedButton = 0;
-                                          });
-                                        },
+                                        onTap: () => _handleCommand(0, "open"),
                                       ),
                                       SizedBox(height: 50.0),
                                       _buildCircularButton(
                                         label: 'STOP',
                                         primaryColor: primaryColor,
                                         isSelected: _selectedButton == 1,
-                                        onTap: () {
-                                          setState(() {
-                                            _selectedButton = 1;
-                                          });
-                                        },
+                                        onTap: () => _handleCommand(1, "stop"),
                                       ),
                                       SizedBox(height: 50.0),
                                       _buildCircularButton(
                                         label: 'CLOSE',
                                         primaryColor: primaryColor,
                                         isSelected: _selectedButton == 2,
-                                        onTap: () {
-                                          setState(() {
-                                            _selectedButton = 2;
-                                          });
-                                        },
+                                        onTap: () => _handleCommand(2, "close"),
                                       ),
                                     ],
                                   ),

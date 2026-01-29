@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:godrej_home/widgets/room_navbar_special.dart';
 import 'package:godrej_home/widgets/features_panel.dart';
+import 'package:godrej_home/screens/vertical_home/light_control_screen.dart';
 
 class FoyerMainScreen extends StatefulWidget {
   const FoyerMainScreen({super.key});
@@ -62,6 +63,16 @@ class _FoyerMainScreenState extends State<FoyerMainScreen> {
                     case 2:
                       print('Fan Tapped');
                       break;
+                  }
+                },
+                onFeatureLongPress: (index) {
+                  if (index == 0 || index == 1) {
+                    // Navigate to light control screen for both light bulbs
+                    Navigator.of(context).push(
+                      CupertinoPageRoute(
+                        builder: (context) => LightControlScreen(),
+                      ),
+                    );
                   }
                 },
               ),
