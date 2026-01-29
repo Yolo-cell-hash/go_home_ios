@@ -11,12 +11,14 @@ class FeaturesPanel extends StatefulWidget {
     required this.sectionName,
     this.allowToggle = false,
     this.onFeatureTap,
+    this.onFeatureLongPress,
   });
 
   final CupertinoThemeData theme;
   final List<String> iconPaths;
   final List<String> iconLabels;
   final Function(int index)? onFeatureTap;
+  final Function(int index)? onFeatureLongPress;
   final String sectionName;
   final bool allowToggle;
 
@@ -96,6 +98,12 @@ class _FeaturesPanelState extends State<FeaturesPanel> {
           children: List.generate(widget.iconPaths.length + 1, (index) {
             final isLast = index == widget.iconPaths.length;
             return GestureDetector(
+              onLongPress: () {
+                print("FeaturesPanel: Long press detected on index $index");
+                if (!isLast) {
+                  widget.onFeatureLongPress?.call(index);
+                }
+              },
               onTap: () {
                 if (isLast) {
                   showCupertinoDialog(

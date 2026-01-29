@@ -45,6 +45,10 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Bluetooth is required to connect to the bed storage controller.</string>
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>Bluetooth is required to connect to the bed storage controller.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Camera access is required for video door bell functionality</string>
 	<key>NSMicrophoneUsageDescription</key>

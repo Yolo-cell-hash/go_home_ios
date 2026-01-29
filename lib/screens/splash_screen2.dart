@@ -16,7 +16,7 @@ class SplashScreen2 extends StatelessWidget {
       duration: const Duration(milliseconds: 1500),
       childWidget: Container(
         decoration: const BoxDecoration(color: Colors.white),
-        child: SvgPicture.asset('images/Group 133.svg', height: 100),
+        child: SvgPicture.asset('images/smarthome_godrej.svg', height: 120),
       ),
       onAnimationEnd: () => debugPrint("On Fade In End"),
       nextScreen: VerticalHomeScreen(),

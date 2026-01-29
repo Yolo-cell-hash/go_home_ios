@@ -3,6 +3,7 @@
 // Coordinates all screen components and manages state
 // Integrates with Firebase Realtime Database for automation flags
 
+import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:firebase_database/firebase_database.dart';
 
@@ -15,6 +16,7 @@ import 'vertical_home/vdb_screen.dart';
 import 'vertical_home/camera_screen.dart';
 import 'vertical_home/bed_storage_screen.dart';
 import 'vertical_home/wardrobe_screen.dart';
+import 'vertical_home/light_control_screen.dart';
 
 /// Main vertical home screen with snap scrolling pages
 class VerticalHomeScreen extends StatefulWidget {
@@ -33,6 +35,9 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
   final DatabaseReference _dbRef = FirebaseDatabase.instance.ref(
     'automation-flags',
   );
+
+  // Stream subscription for real-time Firebase updates
+  StreamSubscription<DatabaseEvent>? _firebaseSubscription;
 
   // Flag to track if initial data has been loaded
   bool _isLoading = true;
@@ -344,6 +349,7 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
                 controlItems: livingRoomControls,
                 statusList: _livingRoomStatus,
                 onItemTap: _handleLivingRoomTap,
+                onItemLongPress: _handleLivingRoomLongPress,
                 onBackTap: () => _navigateToPage(1),
                 gridItemCount: 9,
               ),
@@ -354,6 +360,7 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
                 controlItems: kitchenControls,
                 statusList: _kitchenStatus,
                 onItemTap: _handleKitchenTap,
+                onItemLongPress: _handleKitchenLongPress,
                 onBackTap: () => _navigateToPage(1),
                 gridItemCount: 6,
               ),
@@ -624,6 +631,56 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
         _bedroomStatus[index] = _bedroomStatus[index] == 1 ? 2 : 1;
       });
     }
+  }
+
+  /// Handle living room control long press for navigation
+  void _handleLivingRoomLongPress(int index) {
+    print(
+      '[DEBUG] Living room item $index long pressed - navigating to detail screen',
+    );
+
+    // Navigate to the appropriate screen based on index
+    // Index mapping in livingRoomControls:
+    // 0=DoorLock, 1=VDB, 2=Camera, 3=Light, 4=Light(grey), 5=Fan, 6=WindowSensor, 7=FireSensor, 8=AC
+    Widget? targetScreen;
+
+    switch (index) {
+      case 3: // Light (active)
+        targetScreen = const LightControlScreen();
+        break;
+      default:
+        print('[DEBUG] No long press navigation for living room index: $index');
+        return;
+    }
+
+    Navigator.of(
+      context,
+    ).push(CupertinoPageRoute(builder: (context) => targetScreen!));
+  }
+
+  /// Handle kitchen control long press for navigation
+  void _handleKitchenLongPress(int index) {
+    print(
+      '[DEBUG] Kitchen item $index long pressed - navigating to detail screen',
+    );
+
+    // Navigate to the appropriate screen based on index
+    // Index mapping in kitchenControls:
+    // 0=WindowSensor, 1=GasSensor, 2=Chimney, 3=Fan, 4=Light(grey), 5=Light
+    Widget? targetScreen;
+
+    switch (index) {
+      case 5: // Light (active)
+        targetScreen = const LightControlScreen();
+        break;
+      default:
+        print('[DEBUG] No long press navigation for kitchen index: $index');
+        return;
+    }
+
+    Navigator.of(
+      context,
+    ).push(CupertinoPageRoute(builder: (context) => targetScreen!));
   }
 
   /// Handle bedroom control long press for navigation

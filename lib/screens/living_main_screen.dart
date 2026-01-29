@@ -4,6 +4,7 @@ import 'package:animate_do/animate_do.dart';
 
 import 'package:godrej_home/widgets/room_navbar_special.dart';
 import 'package:godrej_home/widgets/features_panel.dart';
+import 'package:godrej_home/screens/vertical_home/light_control_screen.dart';
 
 class LivingMainScreen extends StatefulWidget {
   const LivingMainScreen({super.key});
@@ -67,6 +68,18 @@ class _LivingMainScreenState extends State<LivingMainScreen> {
                     case 2:
                       print('Air-Conditioner Tapped');
                       break;
+                  }
+                },
+                onFeatureLongPress: (index) {
+                  print(
+                    "LivingMainScreen: Long press callback received for index $index",
+                  );
+                  if (index == 0) {
+                    Navigator.of(context).push(
+                      CupertinoPageRoute(
+                        builder: (context) => LightControlScreen(),
+                      ),
+                    );
                   }
                 },
               ),

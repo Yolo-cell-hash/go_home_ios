@@ -1,5 +1,4 @@
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
 
 import 'package:godrej_home/widgets/navbar_home_screen.dart';

@@ -4,6 +4,7 @@ import 'package:animate_do/animate_do.dart';
 
 import 'package:godrej_home/widgets/features_panel.dart';
 import 'package:godrej_home/widgets/room_navbar_special.dart';
+import 'package:godrej_home/screens/vertical_home/light_control_screen.dart';
 
 class KitchenMainScreen extends StatefulWidget {
   const KitchenMainScreen({super.key});
@@ -59,6 +60,15 @@ class _KitchenMainScreenState extends State<KitchenMainScreen> {
                     case 2:
                       print('Chimney Tapped');
                       break;
+                  }
+                },
+                onFeatureLongPress: (index) {
+                  if (index == 0) {
+                    Navigator.of(context).push(
+                      CupertinoPageRoute(
+                        builder: (context) => LightControlScreen(),
+                      ),
+                    );
                   }
                 },
               ),
