@@ -14,6 +14,8 @@ class RoomControlScreenWidget extends StatelessWidget {
   controlItems; // List of control items with icon and label
   final List<int> statusList; // Status for each item (0=grey, 1=red, 2=green)
   final Function(int index) onItemTap; // Callback when item is tapped
+  final Function(int index)?
+  onItemLongPress; // Callback when item is long pressed
   final Function() onBackTap; // Callback for back button
   final int gridItemCount; // Number of items in grid
   final int gridCrossAxisCount; // Number of columns (3 for all rooms)
@@ -27,6 +29,7 @@ class RoomControlScreenWidget extends StatelessWidget {
     required this.controlItems,
     required this.statusList,
     required this.onItemTap,
+    this.onItemLongPress,
     required this.onBackTap,
     required this.gridItemCount,
     this.gridCrossAxisCount = 3,
@@ -160,6 +163,14 @@ class RoomControlScreenWidget extends StatelessWidget {
                   );
                   onItemTap(index);
                 },
+                onLongPress: onItemLongPress != null
+                    ? () {
+                        print(
+                          '[DEBUG] RoomControlScreen: Item $index long pressed - ${item['label']}',
+                        );
+                        onItemLongPress!(index);
+                      }
+                    : null,
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
