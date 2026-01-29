@@ -13,6 +13,8 @@ import 'vertical_home/room_control_screen.dart';
 import 'vertical_home/door_lock_screen.dart';
 import 'vertical_home/vdb_screen.dart';
 import 'vertical_home/camera_screen.dart';
+import 'vertical_home/bed_storage_screen.dart';
+import 'vertical_home/wardrobe_screen.dart';
 
 /// Main vertical home screen with snap scrolling pages
 class VerticalHomeScreen extends StatefulWidget {
@@ -362,6 +364,7 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
                 controlItems: bedroomControls,
                 statusList: _bedroomStatus,
                 onItemTap: _handleBedroomTap,
+                onItemLongPress: _handleBedroomLongPress,
                 onBackTap: () => _navigateToPage(1),
                 gridItemCount: 6,
                 showHomeButton: true,
@@ -621,6 +624,34 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
         _bedroomStatus[index] = _bedroomStatus[index] == 1 ? 2 : 1;
       });
     }
+  }
+
+  /// Handle bedroom control long press for navigation
+  void _handleBedroomLongPress(int index) {
+    print(
+      '[DEBUG] Bedroom item $index long pressed - navigating to detail screen',
+    );
+
+    // Navigate to the appropriate screen based on index
+    // Index mapping in bedroomControls:
+    // 0=WindowSensor, 1=FireSensor, 2=AC, 3=BedStorage, 4=Light, 5=Wardrobe
+    Widget? targetScreen;
+
+    switch (index) {
+      case 3: // Bed Storage
+        targetScreen = const BedStorageScreen();
+        break;
+      case 5: // Wardrobe
+        targetScreen = const WardrobeScreen();
+        break;
+      default:
+        print('[DEBUG] No long press navigation for bedroom index: $index');
+        return;
+    }
+
+    Navigator.of(
+      context,
+    ).push(CupertinoPageRoute(builder: (context) => targetScreen!));
   }
 
   /// Build page indicator dots
