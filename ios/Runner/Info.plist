@@ -57,5 +57,10 @@
 	<string>Photo library access is required to save captured images and videos</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Photo library access is required to save captured images and videos</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+    <string>Location access is required to scan for nearby Bluetooth devices.</string>
+    <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+    <string>Location access is required to scan for nearby Bluetooth devices.</string>
+
 </dict>
 </plist>
