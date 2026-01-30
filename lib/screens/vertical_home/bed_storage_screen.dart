@@ -1,9 +1,10 @@
+import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:godrej_home/utils/ble_util.dart';
 import 'package:godrej_home/widgets/navbar_setup.dart';
 
-/// Bed Storage control screen
+/// Bed Storage control screen with BLE integration
 class BedStorageScreen extends StatefulWidget {
   const BedStorageScreen({super.key});
 
@@ -12,27 +13,55 @@ class BedStorageScreen extends StatefulWidget {
 }
 
 class _BedStorageScreenState extends State<BedStorageScreen> {
-  // Track selected button: 0=OPEN, 1=STOP, 2=CLOSE, -1=none
+  // Track selected button: 0=UP(Open), 1=STOP, 2=DOWN(Close), -1=none
   int _selectedButton = -1;
+
+  // BLE controller instance (singleton)
   final BleController _bleController = BleController();
+
+  // State tracking
   String _statusMessage = "Initializing...";
-  bool _isConnected = false;
+  BleConnectionStatus _connectionStatus = BleConnectionStatus.disconnected;
+  bool _isScanning = false;
+
+  // Stream subscriptions
+  StreamSubscription<String>? _statusSubscription;
+  StreamSubscription<BleConnectionStatus>? _connectionSubscription;
+  StreamSubscription<bool>? _scanningSubscription;
 
   @override
   void initState() {
     super.initState();
+    _setupBleListeners();
     _bleController.initBle();
-    _bleController.statusStream.listen((status) {
+  }
+
+  void _setupBleListeners() {
+    // Listen to status messages
+    _statusSubscription = _bleController.statusStream.listen((status) {
       if (mounted) {
         setState(() {
           _statusMessage = status;
         });
       }
     });
-    _bleController.isConnectedStream.listen((connected) {
+
+    // Listen to connection status changes
+    _connectionSubscription = _bleController.connectionStatusStream.listen((
+      status,
+    ) {
       if (mounted) {
         setState(() {
-          _isConnected = connected;
+          _connectionStatus = status;
+        });
+      }
+    });
+
+    // Listen to scanning state
+    _scanningSubscription = _bleController.isScanningStream.listen((scanning) {
+      if (mounted) {
+        setState(() {
+          _isScanning = scanning;
         });
       }
     });
@@ -40,16 +69,50 @@ class _BedStorageScreenState extends State<BedStorageScreen> {
 
   @override
   void dispose() {
-    _bleController.dispose();
+    _statusSubscription?.cancel();
+    _connectionSubscription?.cancel();
+    _scanningSubscription?.cancel();
     super.dispose();
   }
 
-  void _handleCommand(int index, String command) {
+  /// Handle button tap and send BLE command
+  /// Commands: OPEN->UP, STOP->STOP, CLOSE->DOWN
+  void _handleCommand(int index, String command) async {
     setState(() {
       _selectedButton = index;
     });
-    _bleController.sendCommand(command);
+
+    final success = await _bleController.sendCommand(command);
+    if (!success && mounted) {
+      // Show toast/snackbar on failure
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to send $command command'),
+          duration: const Duration(seconds: 2),
+          backgroundColor: Colors.red.shade400,
+        ),
+      );
+    }
   }
+
+  /// Get status indicator color based on connection status
+  Color _getStatusColor() {
+    switch (_connectionStatus) {
+      case BleConnectionStatus.connected:
+        return Colors.green;
+      case BleConnectionStatus.scanning:
+      case BleConnectionStatus.connecting:
+        return Colors.orange;
+      case BleConnectionStatus.disconnected:
+      case BleConnectionStatus.error:
+      case BleConnectionStatus.permissionDenied:
+      case BleConnectionStatus.bluetoothOff:
+        return Colors.red;
+    }
+  }
+
+  /// Check if BLE is ready for commands
+  bool get _isReady => _connectionStatus == BleConnectionStatus.connected;
 
   @override
   Widget build(BuildContext context) {
@@ -76,7 +139,7 @@ class _BedStorageScreenState extends State<BedStorageScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Title with icon - "Bed Storage"
+                  // Title with icon and status indicator
                   Row(
                     children: [
                       Container(
@@ -103,16 +166,70 @@ class _BedStorageScreenState extends State<BedStorageScreen> {
                         ),
                       ),
                       Spacer(),
-                      // Status Text
+                      // Status indicator with dot and text
                       Padding(
                         padding: const EdgeInsets.only(right: 40.0),
-                        child: Text(
-                          _statusMessage,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: _isConnected ? Colors.green : Colors.grey,
-                            fontWeight: FontWeight.w500,
-                          ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Scanning indicator or status dot
+                            if (_isScanning)
+                              SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CupertinoActivityIndicator(radius: 8),
+                              )
+                            else
+                              Container(
+                                width: 12,
+                                height: 12,
+                                decoration: BoxDecoration(
+                                  color: _getStatusColor(),
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: _getStatusColor().withOpacity(0.4),
+                                      blurRadius: 6,
+                                      spreadRadius: 1,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            SizedBox(width: 8),
+                            Text(
+                              _statusMessage,
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: _getStatusColor(),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            // Retry button when not connected and not scanning
+                            if (_connectionStatus ==
+                                    BleConnectionStatus.error ||
+                                _connectionStatus ==
+                                    BleConnectionStatus.disconnected)
+                              Padding(
+                                padding: const EdgeInsets.only(left: 12.0),
+                                child: CupertinoButton(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 6,
+                                  ),
+                                  minSize: 0,
+                                  onPressed: _isScanning
+                                      ? null
+                                      : _bleController.retryScan,
+                                  child: Text(
+                                    'Retry',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: primaryColor,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                       ),
                     ],
@@ -157,25 +274,31 @@ class _BedStorageScreenState extends State<BedStorageScreen> {
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
                                       SizedBox(height: 20),
+                                      // OPEN -> UP command
                                       _buildCircularButton(
                                         label: 'OPEN',
                                         primaryColor: primaryColor,
                                         isSelected: _selectedButton == 0,
-                                        onTap: () => _handleCommand(0, "open"),
+                                        isEnabled: _isReady,
+                                        onTap: () => _handleCommand(0, "UP"),
                                       ),
                                       SizedBox(height: 50.0),
+                                      // STOP -> STOP command
                                       _buildCircularButton(
                                         label: 'STOP',
                                         primaryColor: primaryColor,
                                         isSelected: _selectedButton == 1,
-                                        onTap: () => _handleCommand(1, "stop"),
+                                        isEnabled: _isReady,
+                                        onTap: () => _handleCommand(1, "STOP"),
                                       ),
                                       SizedBox(height: 50.0),
+                                      // CLOSE -> DOWN command
                                       _buildCircularButton(
                                         label: 'CLOSE',
                                         primaryColor: primaryColor,
                                         isSelected: _selectedButton == 2,
-                                        onTap: () => _handleCommand(2, "close"),
+                                        isEnabled: _isReady,
+                                        onTap: () => _handleCommand(2, "DOWN"),
                                       ),
                                     ],
                                   ),
@@ -257,33 +380,46 @@ class _BedStorageScreenState extends State<BedStorageScreen> {
     required String label,
     required Color primaryColor,
     required bool isSelected,
+    required bool isEnabled,
     required VoidCallback onTap,
   }) {
     // Default color #E5E4DD, selected uses primaryColor
-    final buttonColor = isSelected ? primaryColor : Color(0xFFE5E4DD);
-    final textColor = isSelected ? Colors.white : primaryColor;
+    // Disabled state uses grey
+    final buttonColor = !isEnabled
+        ? Colors.grey.shade300
+        : isSelected
+        ? primaryColor
+        : Color(0xFFE5E4DD);
+    final textColor = !isEnabled
+        ? Colors.grey.shade500
+        : isSelected
+        ? Colors.white
+        : primaryColor;
 
     return GestureDetector(
-      onTap: onTap,
-      child: Container(
+      onTap: isEnabled ? onTap : null,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
         width: 100,
         height: 100,
         decoration: BoxDecoration(
           color: buttonColor,
           shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.15),
-              blurRadius: 8,
-              offset: Offset(0, 4),
-              spreadRadius: 1,
-            ),
-            BoxShadow(
-              color: Colors.black.withOpacity(0.08),
-              blurRadius: 4,
-              offset: Offset(0, 2),
-            ),
-          ],
+          boxShadow: isEnabled
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.15),
+                    blurRadius: 8,
+                    offset: Offset(0, 4),
+                    spreadRadius: 1,
+                  ),
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 4,
+                    offset: Offset(0, 2),
+                  ),
+                ]
+              : [],
         ),
         child: Center(
           child: Text(

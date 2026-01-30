@@ -17,6 +17,7 @@ import 'vertical_home/camera_screen.dart';
 import 'vertical_home/bed_storage_screen.dart';
 import 'vertical_home/wardrobe_screen.dart';
 import 'vertical_home/light_control_screen.dart';
+import 'package:godrej_home/utils/ble_util.dart';
 
 /// Main vertical home screen with snap scrolling pages
 class VerticalHomeScreen extends StatefulWidget {
@@ -31,6 +32,7 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
+  BleController bleUtil = BleController();
   // Firebase Realtime Database reference
   final DatabaseReference _dbRef = FirebaseDatabase.instance.ref(
     'automation-flags',
@@ -151,10 +153,26 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
     super.initState();
     print('[DEBUG] VerticalHomeScreen initState - fetching Firebase data');
     _fetchFirebaseState();
+    _setupFirebaseListener();
+    bleUtil.initBle();
+  }
+
+  /// Setup real-time Firebase listener for automation flags
+  void _setupFirebaseListener() {
+    _firebaseSubscription = _dbRef.onValue.listen((event) {
+      if (event.snapshot.exists && mounted) {
+        final data = Map<String, dynamic>.from(event.snapshot.value as Map);
+        print('[DEBUG] Firebase real-time update received');
+        setState(() {
+          _updateStatusFromFirebase(data);
+        });
+      }
+    });
   }
 
   @override
   void dispose() {
+    _firebaseSubscription?.cancel();
     _pageController.dispose();
     super.dispose();
   }
