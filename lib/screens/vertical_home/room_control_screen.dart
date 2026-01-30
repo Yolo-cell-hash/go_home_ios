@@ -140,7 +140,7 @@ class RoomControlScreenWidget extends StatelessWidget {
       child: Center(
         child: SizedBox(
           width: 442,
-          height: 600,
+          // height: 600,
           child: GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
