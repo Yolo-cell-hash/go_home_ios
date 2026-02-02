@@ -2,6 +2,7 @@
 // Reusable room control screen widget for Living Room, Kitchen, and Bedroom
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'utils.dart';
 
 /// Reusable room control screen with back button, title, room image, and control grid
@@ -22,6 +23,12 @@ class RoomControlScreenWidget extends StatelessWidget {
   final bool showHomeButton; // Whether to show home button (for bedroom)
   final Function()? onHomeTap; // Callback for home button
 
+  // Alert states for visual indicators
+  final bool isFireAlert; // Fire sensor is triggered
+  final bool isWindowOpen; // Window sensor is triggered
+  final int? fireSensorIndex; // Index of fire sensor in this room's grid
+  final int? windowSensorIndex; // Index of window sensor in this room's grid
+
   const RoomControlScreenWidget({
     super.key,
     required this.roomName,
@@ -35,6 +42,10 @@ class RoomControlScreenWidget extends StatelessWidget {
     this.gridCrossAxisCount = 3,
     this.showHomeButton = false,
     this.onHomeTap,
+    this.isFireAlert = false,
+    this.isWindowOpen = false,
+    this.fireSensorIndex,
+    this.windowSensorIndex,
   });
 
   @override
@@ -156,6 +167,18 @@ class RoomControlScreenWidget extends StatelessWidget {
               final isGreen = status == 2;
               final item = controlItems[index];
 
+              // Check if this is an alert sensor
+              final bool isAlertedSensor =
+                  (index == fireSensorIndex && isFireAlert) ||
+                  (index == windowSensorIndex && isWindowOpen);
+
+              // Define alert colors - using more elegant shades
+              const alertRed = Color(0xFFD32F2F); // Material red 700
+              const alertOrange = Color(0xFFF57C00); // Material orange 700
+              final alertColor = (index == fireSensorIndex)
+                  ? alertRed
+                  : alertOrange;
+
               return GestureDetector(
                 onTap: () {
                   print(
@@ -176,37 +199,88 @@ class RoomControlScreenWidget extends StatelessWidget {
                   children: [
                     Expanded(
                       flex: 4,
-                      child: Container(
-                        padding: const EdgeInsets.all(3),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: getStatusColor(status),
-                            width: 2,
-                          ),
-                        ),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: isGreen
-                                ? primaryColor.withOpacity(0.15)
-                                : CupertinoColors.systemGrey5,
-                            border: Border.all(
-                              color: isGreen
-                                  ? primaryColor
-                                  : CupertinoColors.systemGrey3,
-                              width: 1,
+                      child: Stack(
+                        children: [
+                          // Main icon container with elegant styling
+                          Container(
+                            padding: const EdgeInsets.all(3),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: isAlertedSensor
+                                    ? alertColor
+                                    : getStatusColor(status),
+                                width: isAlertedSensor ? 2.5 : 2,
+                              ),
+                              // Subtle outer glow for alert state
+                              boxShadow: isAlertedSensor
+                                  ? [
+                                      BoxShadow(
+                                        color: alertColor.withOpacity(0.35),
+                                        blurRadius: 16,
+                                        spreadRadius: 4,
+                                      ),
+                                      BoxShadow(
+                                        color: alertColor.withOpacity(0.2),
+                                        blurRadius: 8,
+                                        spreadRadius: 1,
+                                      ),
+                                    ]
+                                  : null,
+                            ),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                // Clean background - no fill for alerted sensors
+                                // Alert glow already indicates they're active
+                                color: (isGreen && !isAlertedSensor)
+                                    ? primaryColor.withOpacity(0.12)
+                                    : CupertinoColors.systemGrey6,
+                                border: Border.all(
+                                  color: isAlertedSensor
+                                      ? alertColor.withOpacity(0.4)
+                                      : (isGreen
+                                            ? primaryColor
+                                            : CupertinoColors.systemGrey4),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Center(
+                                child: buildControlItem(
+                                  item['icon'],
+                                  isGreen || isAlertedSensor,
+                                  isAlertedSensor ? alertColor : primaryColor,
+                                ),
+                              ),
                             ),
                           ),
-                          child: Center(
-                            child: buildControlItem(
-                              item['icon'],
-                              isGreen,
-                              primaryColor,
+                          // Small indicator badge for alert state
+                          if (isAlertedSensor)
+                            Positioned(
+                              top: 4,
+                              right: 4,
+                              child: Container(
+                                width: 14,
+                                height: 14,
+                                decoration: BoxDecoration(
+                                  color: alertColor,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: CupertinoColors.white,
+                                    width: 2,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: alertColor.withOpacity(0.5),
+                                      blurRadius: 4,
+                                      spreadRadius: 1,
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
-                          ),
-                        ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -216,11 +290,16 @@ class RoomControlScreenWidget extends StatelessWidget {
                         item['label'],
                         style: TextStyle(
                           fontSize: 14,
-                          color: isGreen
-                              ? primaryColor
-                              : CupertinoColors.systemGrey,
+                          color: isAlertedSensor
+                              ? alertColor
+                              : (isGreen
+                                    ? primaryColor
+                                    : CupertinoColors.systemGrey),
                           fontFamily: 'GEG',
                           height: 1.2,
+                          fontWeight: isAlertedSensor
+                              ? FontWeight.w600
+                              : FontWeight.normal,
                         ),
                         textAlign: TextAlign.center,
                         maxLines: 2,

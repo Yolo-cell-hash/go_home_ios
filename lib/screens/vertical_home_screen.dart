@@ -5,7 +5,10 @@
 
 import 'dart:async';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:vibration/vibration.dart';
+import 'package:godrej_home/services/notification_service.dart';
 
 // Import modular screen components
 import 'vertical_home/welcome_screen.dart';
@@ -38,9 +41,16 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
 
   // Stream subscription for real-time Firebase updates
   StreamSubscription<DatabaseEvent>? _firebaseSubscription;
+  StreamSubscription<DatabaseEvent>? _fireAlertSubscription;
+  StreamSubscription<DatabaseEvent>? _windowAlertSubscription;
 
   // Flag to track if initial data has been loaded
   bool _isLoading = true;
+
+  // Fire and window alert states
+  bool _isFireAlert = false;
+  bool _isWindowOpen = false;
+  Timer? _vibrationTimer;
 
   // Toggle states for living room controls (3x3 = 9 buttons)
   List<bool> _livingRoomToggles = List.generate(9, (index) => false);
@@ -192,13 +202,167 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
         });
       }
     });
+
+    // Listen to fire alert
+    _fireAlertSubscription = _dbRef.child('is-fire').onValue.listen((event) {
+      if (event.snapshot.exists && mounted) {
+        final value = event.snapshot.value as bool? ?? false;
+        if (value != _isFireAlert) {
+          setState(() {
+            _isFireAlert = value;
+          });
+          if (value) {
+            _triggerAlertVibration();
+            NotificationService().showFireAlertNotification();
+            _showSensorAlert(
+              'Fire Detected!',
+              'Fire sensor has been triggered. Please evacuate immediately and contact emergency services.',
+              isFireAlert: true,
+            );
+          } else {
+            // Only stop vibration if window alert is also not active
+            if (!_isWindowOpen) {
+              _stopAlertVibration();
+            }
+          }
+          print('[DEBUG] Fire alert updated: $value');
+        }
+      }
+    });
+
+    // Listen to window open alert
+    _windowAlertSubscription = _dbRef.child('is-window-open').onValue.listen((
+      event,
+    ) {
+      if (event.snapshot.exists && mounted) {
+        final value = event.snapshot.value as bool? ?? false;
+        if (value != _isWindowOpen) {
+          setState(() {
+            _isWindowOpen = value;
+          });
+          if (value) {
+            _triggerAlertVibration();
+            NotificationService().showWindowOpenNotification();
+            _showSensorAlert(
+              'Window Open!',
+              'Window sensor detected that a window is open. Please check if this is intentional.',
+              isFireAlert: false,
+            );
+          } else {
+            // Only stop vibration if fire alert is also not active
+            if (!_isFireAlert) {
+              _stopAlertVibration();
+            }
+          }
+          print('[DEBUG] Window open alert updated: $value');
+        }
+      }
+    });
   }
 
   @override
   void dispose() {
     _firebaseSubscription?.cancel();
+    _fireAlertSubscription?.cancel();
+    _windowAlertSubscription?.cancel();
+    _vibrationTimer?.cancel();
     _pageController.dispose();
     super.dispose();
+  }
+
+  /// Trigger repeating vibration for alerts - continuous until acknowledged
+  void _triggerAlertVibration() async {
+    final hasVibrator = await Vibration.hasVibrator();
+    if (hasVibrator == true) {
+      // More aggressive pattern: vibrate 800ms, pause 400ms, repeat
+      _vibrationTimer?.cancel();
+      _vibrationTimer = Timer.periodic(const Duration(milliseconds: 1200), (
+        timer,
+      ) async {
+        // Check if any alert is still active before vibrating
+        if (_isFireAlert || _isWindowOpen) {
+          final canVibrate = await Vibration.hasVibrator();
+          if (canVibrate == true) {
+            Vibration.vibrate(duration: 800);
+          }
+        } else {
+          // Stop timer if no alerts are active
+          timer.cancel();
+          _vibrationTimer = null;
+        }
+      });
+      // Initial strong vibration
+      Vibration.vibrate(duration: 800);
+    }
+  }
+
+  /// Stop alert vibration
+  void _stopAlertVibration() {
+    _vibrationTimer?.cancel();
+    _vibrationTimer = null;
+    Vibration.cancel();
+  }
+
+  /// Show sensor alert dialog with elegant styling
+  void _showSensorAlert(
+    String title,
+    String message, {
+    required bool isFireAlert,
+  }) {
+    final alertColor = isFireAlert
+        ? const Color(0xFFE53935)
+        : const Color(0xFFFF9800);
+
+    showCupertinoDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return CupertinoAlertDialog(
+          title: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: alertColor,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  isFireAlert
+                      ? CupertinoIcons.flame_fill
+                      : CupertinoIcons.rectangle_3_offgrid,
+                  color: Colors.white,
+                  size: 18,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                title,
+                style: TextStyle(
+                  color: alertColor,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          content: Padding(
+            padding: const EdgeInsets.only(top: 12.0),
+            child: Text(message, style: const TextStyle(fontSize: 14)),
+          ),
+          actions: [
+            CupertinoDialogAction(
+              isDefaultAction: true,
+              onPressed: () {
+                _stopAlertVibration();
+                Navigator.of(dialogContext).pop();
+              },
+              child: Text('Acknowledge', style: TextStyle(color: alertColor)),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   /// Fetch initial state from Firebase Realtime Database
@@ -394,6 +558,10 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
                 onItemLongPress: _handleLivingRoomLongPress,
                 onBackTap: () => _navigateToPage(1),
                 gridItemCount: 9,
+                isFireAlert: _isFireAlert,
+                isWindowOpen: _isWindowOpen,
+                fireSensorIndex: 7,
+                windowSensorIndex: 6,
               ),
               // Screen 4: Kitchen
               RoomControlScreenWidget(
@@ -405,6 +573,9 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
                 onItemLongPress: _handleKitchenLongPress,
                 onBackTap: () => _navigateToPage(1),
                 gridItemCount: 6,
+                isFireAlert: _isFireAlert,
+                isWindowOpen: _isWindowOpen,
+                windowSensorIndex: 0,
               ),
               // Screen 5: Bedroom
               RoomControlScreenWidget(
@@ -418,6 +589,10 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
                 gridItemCount: 6,
                 showHomeButton: true,
                 onHomeTap: () => _navigateToPage(0),
+                isFireAlert: _isFireAlert,
+                isWindowOpen: _isWindowOpen,
+                fireSensorIndex: 1,
+                windowSensorIndex: 0,
               ),
             ],
           ),
@@ -687,6 +862,15 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
     Widget? targetScreen;
 
     switch (index) {
+      case 0: // Door Lock
+        targetScreen = const DoorLockScreen();
+        break;
+      case 1: // VDB
+        targetScreen = const VDBScreen();
+        break;
+      case 2: // Camera
+        targetScreen = const CameraScreen();
+        break;
       case 3: // Light (active)
         targetScreen = const LightControlScreen();
         break;
