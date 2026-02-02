@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import 'package:godrej_home/utils/app_state.dart';
+import 'package:godrej_home/services/notification_service.dart';
 
 import 'package:godrej_home/screens/splash_screen.dart';
 import 'package:godrej_home/screens/splash_screen2.dart';
@@ -39,6 +40,14 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
   await _requestAllPermissions();
+
+  // Initialize notification service at app startup
+  await NotificationService().initialize();
+  await NotificationService().requestPermissions();
+  print(
+    '[NotificationService] Initialized and permissions requested at startup',
+  );
+
   runApp(
     ChangeNotifierProvider(
       create: (context) => AppState(),

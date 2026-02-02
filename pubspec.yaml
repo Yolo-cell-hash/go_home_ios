@@ -54,6 +54,8 @@ dependencies:
   path_provider: ^2.1.1
   quickalert: ^1.1.0
   fluttertoast: ^9.0.0
+  vibration: ^3.1.5
+  flutter_local_notifications: ^20.0.0
 
 
 dev_dependencies:
