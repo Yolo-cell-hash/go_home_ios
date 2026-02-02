@@ -27,6 +27,7 @@ class _LightControlScreenState extends State<LightControlScreen> {
   // Stream subscription for real-time updates
   StreamSubscription<DatabaseEvent>? _lightSubscription;
   StreamSubscription<DatabaseEvent>? _hexSubscription;
+  StreamSubscription<DatabaseEvent>? _intensitySubscription;
 
   // Position of color indicator on wheel (relative to center)
   Offset _indicatorPosition = const Offset(-70, 30);
@@ -49,6 +50,7 @@ class _LightControlScreenState extends State<LightControlScreen> {
   void dispose() {
     _lightSubscription?.cancel();
     _hexSubscription?.cancel();
+    _intensitySubscription?.cancel();
     super.dispose();
   }
 
@@ -73,6 +75,21 @@ class _LightControlScreenState extends State<LightControlScreen> {
         if (hexValue != null && hexValue.isNotEmpty) {
           _setColorFromHex(hexValue);
           print('[DEBUG] LightControlScreen: Hex color = $hexValue');
+        }
+      }
+
+      // Fetch intensity value (0-255)
+      final intensitySnapshot = await _dbRef.child('light intensity').get();
+      if (intensitySnapshot.exists) {
+        final intensityValue = intensitySnapshot.value;
+        if (intensityValue != null) {
+          final intValue = (intensityValue as num).toInt();
+          setState(() {
+            brightness = intValue / 255.0;
+          });
+          print(
+            '[DEBUG] LightControlScreen: Intensity = $intValue (brightness = $brightness)',
+          );
         }
       }
 
@@ -117,6 +134,27 @@ class _LightControlScreenState extends State<LightControlScreen> {
         }
       }
     });
+
+    // Listen to intensity changes
+    _intensitySubscription = _dbRef.child('light intensity').onValue.listen((
+      event,
+    ) {
+      if (event.snapshot.exists) {
+        final intensityValue = event.snapshot.value;
+        if (mounted && intensityValue != null) {
+          final intValue = (intensityValue as num).toInt();
+          final newBrightness = intValue / 255.0;
+          if ((newBrightness - brightness).abs() > 0.01) {
+            setState(() {
+              brightness = newBrightness;
+            });
+            print(
+              '[DEBUG] LightControlScreen: Intensity updated to $intValue (brightness = $newBrightness)',
+            );
+          }
+        }
+      }
+    });
   }
 
   /// Update light toggle state in Firebase
@@ -137,6 +175,19 @@ class _LightControlScreenState extends State<LightControlScreen> {
       print('[DEBUG] LightControlScreen: Updated Firebase hex = $hexValue');
     } catch (e) {
       print('[ERROR] LightControlScreen: Failed to update hex color: $e');
+    }
+  }
+
+  /// Update light intensity value in Firebase (0-255)
+  Future<void> _updateIntensity(double brightnessValue) async {
+    final intensity = (brightnessValue * 255).round().clamp(0, 255);
+    try {
+      await _dbRef.child('light intensity').set(intensity);
+      print(
+        '[DEBUG] LightControlScreen: Updated Firebase intensity = $intensity',
+      );
+    } catch (e) {
+      print('[ERROR] LightControlScreen: Failed to update intensity: $e');
     }
   }
 
@@ -499,6 +550,11 @@ class _LightControlScreenState extends State<LightControlScreen> {
                       });
                     }
                   : null,
+              onVerticalDragEnd: isLightOn
+                  ? (_) {
+                      _updateIntensity(brightness);
+                    }
+                  : null,
               onTapDown: isLightOn
                   ? (details) {
                       setState(() {
@@ -506,6 +562,11 @@ class _LightControlScreenState extends State<LightControlScreen> {
                             1 - (details.localPosition.dy / sliderHeight);
                         brightness = newBrightness.clamp(0.0, 1.0);
                       });
+                    }
+                  : null,
+              onTapUp: isLightOn
+                  ? (_) {
+                      _updateIntensity(brightness);
                     }
                   : null,
               child: Container(color: Colors.transparent),

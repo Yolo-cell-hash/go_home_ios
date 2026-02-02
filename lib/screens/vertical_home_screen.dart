@@ -69,15 +69,32 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
 
   // Living room icons (9)
   // Index: 0=DoorLock, 1=VDB, 2=Camera, 3=Light, 4=Light(grey), 5=Fan, 6=WindowSensor, 7=FireSensor, 8=AC
-  late List<int> _livingRoomStatus = [2, 1, 2, 1, 0, 2, 1, 2, 1];
+  late List<int> _livingRoomStatus = [
+    2,
+    1,
+    2,
+    1,
+    0,
+    2,
+    1,
+    2,
+    0,
+  ]; // AC greyed out
 
   // Kitchen icons (6)
   // Index: 0=WindowSensor, 1=GasSensor, 2=Chimney, 3=Fan, 4=Light(grey), 5=Light
-  late List<int> _kitchenStatus = [2, 1, 2, 1, 0, 2];
+  late List<int> _kitchenStatus = [2, 1, 0, 1, 0, 2]; // Chimney greyed out
 
   // Bedroom icons (6)
   // Index: 0=WindowSensor, 1=FireSensor, 2=AC, 3=BedStorage, 4=Light(grey), 5=Wardrobe
-  late List<int> _bedroomStatus = [1, 2, 1, 2, 0, 1];
+  late List<int> _bedroomStatus = [
+    1,
+    2,
+    0,
+    2,
+    0,
+    0,
+  ]; // AC and Wardrobe greyed out
 
   // Control items data for each room (with dbKey for Firebase mapping)
   static const List<Map<String, dynamic>> livingRoomControls = [
@@ -104,7 +121,7 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
     {
       'icon': 'images/ac.png',
       'label': 'Air Conditioner',
-      'dbKey': 'air-conditioner',
+      'dbKey': null, // Disabled/greyed out
     },
   ];
 
@@ -115,7 +132,11 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
       'dbKey': 'window-sensor',
     },
     {'icon': 'images/gas_sensor.png', 'label': 'Gas Sensor', 'dbKey': null},
-    {'icon': 'images/chimney.png', 'label': 'Chimney', 'dbKey': 'chimney'},
+    {
+      'icon': 'images/chimney.png',
+      'label': 'Chimney',
+      'dbKey': null,
+    }, // Disabled/greyed out
     {'icon': 'images/fan.png', 'label': 'Fan', 'dbKey': 'fan'},
     {'icon': CupertinoIcons.lightbulb, 'label': 'Light', 'dbKey': null}, // grey
     {'icon': CupertinoIcons.lightbulb, 'label': 'Light', 'dbKey': 'light'},
@@ -135,7 +156,7 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
     {
       'icon': 'images/ac.png',
       'label': 'Air Conditioner',
-      'dbKey': 'air-conditioner',
+      'dbKey': null, // Disabled/greyed out
     },
     {
       'icon': 'images/bed_storage.png',
@@ -143,7 +164,11 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
       'dbKey': 'bed-storage',
     },
     {'icon': CupertinoIcons.lightbulb, 'label': 'Light', 'dbKey': null}, // grey
-    {'icon': 'images/wardrobe.png', 'label': 'Wardrobe', 'dbKey': 'wardrobe'},
+    {
+      'icon': 'images/wardrobe.png',
+      'label': 'Wardrobe',
+      'dbKey': null,
+    }, // Disabled/greyed out
   ];
 
   @override
