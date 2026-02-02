@@ -211,18 +211,21 @@ class RoomControlScreenWidget extends StatelessWidget {
                     ),
                     const SizedBox(height: 12),
                     Flexible(
-                      flex: 1,
+                      flex: 2,
                       child: Text(
                         item['label'],
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: 14,
                           color: isGreen
                               ? primaryColor
                               : CupertinoColors.systemGrey,
                           fontFamily: 'GEG',
+                          height: 1.2,
                         ),
                         textAlign: TextAlign.center,
-                        overflow: TextOverflow.ellipsis,
+                        maxLines: 2,
+                        softWrap: true,
+                        overflow: TextOverflow.visible,
                       ),
                     ),
                   ],
