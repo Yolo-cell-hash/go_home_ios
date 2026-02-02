@@ -32,13 +32,22 @@ class _BedStorageScreenState extends State<BedStorageScreen> {
   @override
   void initState() {
     super.initState();
+    print('[BED STORAGE DEBUG] initState() - Setting up BLE listeners');
     _setupBleListeners();
-    _bleController.initBle();
+    print(
+      '[BED STORAGE DEBUG] Calling forceReconnect() to scan for EB device...',
+    );
+    _bleController.forceReconnect();
   }
 
   void _setupBleListeners() {
+    print(
+      '[BED STORAGE DEBUG] _setupBleListeners() - Setting up stream listeners',
+    );
+
     // Listen to status messages
     _statusSubscription = _bleController.statusStream.listen((status) {
+      print('[BED STORAGE DEBUG] Status stream update: $status');
       if (mounted) {
         setState(() {
           _statusMessage = status;
@@ -50,6 +59,7 @@ class _BedStorageScreenState extends State<BedStorageScreen> {
     _connectionSubscription = _bleController.connectionStatusStream.listen((
       status,
     ) {
+      print('[BED STORAGE DEBUG] Connection status stream update: $status');
       if (mounted) {
         setState(() {
           _connectionStatus = status;
@@ -59,6 +69,7 @@ class _BedStorageScreenState extends State<BedStorageScreen> {
 
     // Listen to scanning state
     _scanningSubscription = _bleController.isScanningStream.listen((scanning) {
+      print('[BED STORAGE DEBUG] Scanning state stream update: $scanning');
       if (mounted) {
         setState(() {
           _isScanning = scanning;
@@ -76,13 +87,25 @@ class _BedStorageScreenState extends State<BedStorageScreen> {
   }
 
   /// Handle button tap and send BLE command
-  /// Commands: OPEN->UP, STOP->STOP, CLOSE->DOWN
+  /// Commands: OPEN->"open", STOP->"stop", CLOSE->"close" (case-sensitive, lowercase)
   void _handleCommand(int index, String command) async {
+    print(
+      '[BED STORAGE DEBUG] _handleCommand() - Button index: $index, Command: "$command"',
+    );
+
     setState(() {
       _selectedButton = index;
     });
 
+    print('[BED STORAGE DEBUG] Sending command "$command" to BLE device...');
     final success = await _bleController.sendCommand(command);
+
+    if (success) {
+      print('[BED STORAGE DEBUG] Command "$command" sent successfully!');
+    } else {
+      print('[BED STORAGE DEBUG] Failed to send command "$command"');
+    }
+
     if (!success && mounted) {
       // Show toast/snackbar on failure
       ScaffoldMessenger.of(context).showSnackBar(
@@ -274,31 +297,31 @@ class _BedStorageScreenState extends State<BedStorageScreen> {
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
                                       SizedBox(height: 20),
-                                      // OPEN -> UP command
+                                      // OPEN -> "open" command (lowercase, case-sensitive)
                                       _buildCircularButton(
                                         label: 'OPEN',
                                         primaryColor: primaryColor,
                                         isSelected: _selectedButton == 0,
                                         isEnabled: _isReady,
-                                        onTap: () => _handleCommand(0, "UP"),
+                                        onTap: () => _handleCommand(0, "open"),
                                       ),
                                       SizedBox(height: 50.0),
-                                      // STOP -> STOP command
+                                      // STOP -> "stop" command (lowercase, case-sensitive)
                                       _buildCircularButton(
                                         label: 'STOP',
                                         primaryColor: primaryColor,
                                         isSelected: _selectedButton == 1,
                                         isEnabled: _isReady,
-                                        onTap: () => _handleCommand(1, "STOP"),
+                                        onTap: () => _handleCommand(1, "stop"),
                                       ),
                                       SizedBox(height: 50.0),
-                                      // CLOSE -> DOWN command
+                                      // CLOSE -> "close" command (lowercase, case-sensitive)
                                       _buildCircularButton(
                                         label: 'CLOSE',
                                         primaryColor: primaryColor,
                                         isSelected: _selectedButton == 2,
                                         isEnabled: _isReady,
-                                        onTap: () => _handleCommand(2, "DOWN"),
+                                        onTap: () => _handleCommand(2, "close"),
                                       ),
                                     ],
                                   ),

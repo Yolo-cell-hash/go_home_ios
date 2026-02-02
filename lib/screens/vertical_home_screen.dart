@@ -17,7 +17,6 @@ import 'vertical_home/camera_screen.dart';
 import 'vertical_home/bed_storage_screen.dart';
 import 'vertical_home/wardrobe_screen.dart';
 import 'vertical_home/light_control_screen.dart';
-import 'package:godrej_home/utils/ble_util.dart';
 
 /// Main vertical home screen with snap scrolling pages
 class VerticalHomeScreen extends StatefulWidget {
@@ -32,7 +31,6 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
-  BleController bleUtil = BleController();
   // Firebase Realtime Database reference
   final DatabaseReference _dbRef = FirebaseDatabase.instance.ref(
     'automation-flags',
@@ -154,7 +152,8 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
     print('[DEBUG] VerticalHomeScreen initState - fetching Firebase data');
     _fetchFirebaseState();
     _setupFirebaseListener();
-    bleUtil.initBle();
+    // NOTE: BLE is intentionally NOT initialized here
+    // BLE initialization happens in BedStorageScreen when user navigates there
   }
 
   /// Setup real-time Firebase listener for automation flags
