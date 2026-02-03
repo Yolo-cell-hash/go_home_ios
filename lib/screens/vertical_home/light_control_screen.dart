@@ -73,8 +73,8 @@ class _LightControlScreenState extends State<LightControlScreen> {
       if (hexSnapshot.exists) {
         final hexValue = hexSnapshot.value as String?;
         if (hexValue != null && hexValue.isNotEmpty) {
-          _setColorFromHex(hexValue);
-          print('[DEBUG] LightControlScreen: Hex color = $hexValue');
+          _setColorFromRgb(hexValue);
+          print('[DEBUG] LightControlScreen: RGB color = $hexValue');
         }
       }
 
@@ -124,12 +124,12 @@ class _LightControlScreenState extends State<LightControlScreen> {
     // Listen to hex color changes
     _hexSubscription = _dbRef.child('light-hex-value').onValue.listen((event) {
       if (event.snapshot.exists) {
-        final hexValue = event.snapshot.value as String?;
-        if (mounted && hexValue != null && hexValue.isNotEmpty) {
-          final newColor = _hexToColor(hexValue);
+        final rgbValue = event.snapshot.value as String?;
+        if (mounted && rgbValue != null && rgbValue.isNotEmpty) {
+          final newColor = _rgbToColor(rgbValue);
           if (newColor != selectedColor) {
-            _setColorFromHex(hexValue);
-            print('[DEBUG] LightControlScreen: Hex color updated to $hexValue');
+            _setColorFromRgb(rgbValue);
+            print('[DEBUG] LightControlScreen: RGB color updated to $rgbValue');
           }
         }
       }
@@ -167,14 +167,14 @@ class _LightControlScreenState extends State<LightControlScreen> {
     }
   }
 
-  /// Update hex color value in Firebase
-  Future<void> _updateHexColor(Color color) async {
-    final hexValue = _colorToHex(color);
+  /// Update RGB color value in Firebase (format: "r,g,b")
+  Future<void> _updateRgbColor(Color color) async {
+    final rgbValue = _colorToRgb(color);
     try {
-      await _dbRef.child('light-hex-value').set(hexValue);
-      print('[DEBUG] LightControlScreen: Updated Firebase hex = $hexValue');
+      await _dbRef.child('light-hex-value').set(rgbValue);
+      print('[DEBUG] LightControlScreen: Updated Firebase RGB = $rgbValue');
     } catch (e) {
-      print('[ERROR] LightControlScreen: Failed to update hex color: $e');
+      print('[ERROR] LightControlScreen: Failed to update RGB color: $e');
     }
   }
 
@@ -191,23 +191,31 @@ class _LightControlScreenState extends State<LightControlScreen> {
     }
   }
 
-  /// Convert Color to hex string (e.g., "#FFEB3B")
-  String _colorToHex(Color color) {
-    return '#${color.value.toRadixString(16).substring(2).toUpperCase()}';
+  /// Convert Color to RGB string (e.g., "255,235,59")
+  String _colorToRgb(Color color) {
+    return '${color.red},${color.green},${color.blue}';
   }
 
-  /// Convert hex string to Color
-  Color _hexToColor(String hex) {
-    hex = hex.replaceFirst('#', '');
-    if (hex.length == 6) {
-      hex = 'FF$hex'; // Add alpha if not present
+  /// Convert RGB string (e.g., "255,235,59") to Color
+  Color _rgbToColor(String rgb) {
+    final parts = rgb.split(',');
+    if (parts.length == 3) {
+      final r = int.tryParse(parts[0].trim()) ?? 0;
+      final g = int.tryParse(parts[1].trim()) ?? 0;
+      final b = int.tryParse(parts[2].trim()) ?? 0;
+      return Color.fromARGB(
+        255,
+        r.clamp(0, 255),
+        g.clamp(0, 255),
+        b.clamp(0, 255),
+      );
     }
-    return Color(int.parse(hex, radix: 16));
+    return const Color(0xFFFFEB3B); // Default yellow if parsing fails
   }
 
-  /// Set color from hex string and update indicator position
-  void _setColorFromHex(String hex) {
-    final color = _hexToColor(hex);
+  /// Set color from RGB string and update indicator position
+  void _setColorFromRgb(String rgb) {
+    final color = _rgbToColor(rgb);
     final hsv = HSVColor.fromColor(color);
 
     // Calculate indicator position from hue and saturation
@@ -422,7 +430,7 @@ class _LightControlScreenState extends State<LightControlScreen> {
                                                       0xFFFFE0B2,
                                                     );
                                                   });
-                                                  _updateHexColor(
+                                                  _updateRgbColor(
                                                     Color(0xFFFFE0B2),
                                                   );
                                                 },
@@ -439,7 +447,7 @@ class _LightControlScreenState extends State<LightControlScreen> {
                                                       0xFFFFF9C4,
                                                     );
                                                   });
-                                                  _updateHexColor(
+                                                  _updateRgbColor(
                                                     Color(0xFFFFF9C4),
                                                   );
                                                 },
@@ -591,7 +599,7 @@ class _LightControlScreenState extends State<LightControlScreen> {
       onPanEnd: isLightOn
           ? (_) {
               // Write to Firebase when user finishes dragging
-              _updateHexColor(selectedColor);
+              _updateRgbColor(selectedColor);
             }
           : null,
       onTapDown: isLightOn
@@ -602,7 +610,7 @@ class _LightControlScreenState extends State<LightControlScreen> {
       onTapUp: isLightOn
           ? (_) {
               // Write to Firebase when user taps
-              _updateHexColor(selectedColor);
+              _updateRgbColor(selectedColor);
             }
           : null,
       child: Container(
@@ -717,7 +725,7 @@ class _LightControlScreenState extends State<LightControlScreen> {
                       selectedColor = color;
                       _indicatorPosition = const Offset(-50, 30);
                     });
-                    _updateHexColor(color);
+                    _updateRgbColor(color);
                   }
                 : null,
             child: Container(
