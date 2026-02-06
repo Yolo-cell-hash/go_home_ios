@@ -8,6 +8,7 @@ import 'package:permission_handler/permission_handler.dart';
 
 import 'package:godrej_home/utils/app_state.dart';
 import 'package:godrej_home/services/notification_service.dart';
+import 'package:godrej_home/services/ja_camera_service.dart';
 
 import 'package:godrej_home/screens/splash_screen.dart';
 import 'package:godrej_home/screens/splash_screen2.dart';
@@ -47,6 +48,13 @@ void main() async {
   print(
     '[NotificationService] Initialized and permissions requested at startup',
   );
+
+  // Pre-initialize camera SDK on iOS for faster camera screen loading
+  if (Platform.isIOS) {
+    JACameraService.initializeSDK().then((success) {
+      print('[JACameraService] SDK pre-initialized at boot: $success');
+    });
+  }
 
   runApp(
     ChangeNotifierProvider(

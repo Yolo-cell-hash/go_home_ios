@@ -1,0 +1,14 @@
+"addDevice_share_overdue" = "分享过期，请重新获取"; 
+"addDevice_share_vailidTime" = "有效期"; 
+"plural_ios" = "%ld秒"; 
+"adddevice_add_manully" = "手动添加"; 
+"text_ID" = "ID"; 
+"addDevice_scan_putInFrame" = "将二维码放入框内，即可自动扫描"; 
+"setting_phone_open_camera" = "请打开设置->SW360->打开相机开关"; 
+"share" = "分享"; 
+"photo_album" = "相册"; 
+"cancel" = "取消"; 
+"confirm" = "确定"; 
+"addDevice_point" = "请将设备二维码或条形码放入扫描框内"; 
+"setting_phone_selectAndWrite_options" = "请打开设置->SW360->照片，选择读写选项"; 
+"competence_lack" = "没有权限"; 

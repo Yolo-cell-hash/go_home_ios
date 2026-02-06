@@ -1,0 +1,85 @@
+{
+            "version": "1.0.0",
+            "lastChanger": "Wynton",
+            "columns": 1,
+            "addDeviceType":1,
+            "kinds": [
+                              {
+                              "name": "adddevice_wireless_single_product",
+                              "detailName": "adddevice_most_configure",
+                              "image": "icon_wireless_products",
+                              "configWay": 10,
+                              "itemType": 0,
+                              "lightFlashImages": [
+                                                   "icon_add_light2"
+                                                   ],
+                              "lightFlashTexts": [
+                                                  "addDevice_help_text2",
+                                                  "addDevice_help_text12"
+                                                  ],
+                              "resetImages": [
+                                              "icon_reset_success"
+                                              ],
+                              "resetTexts": [
+                                             "addDevice_help_text3",
+                                             "addDevice_help_text9",
+                                             "addDevice_help_text5",
+                                             "addDevice_help_text13"
+                                             ]
+                              },
+                              {
+                              "name": "adddevice_suit",
+                              "detailName": "adddevice_partner_entrance",
+                              "image": "icon_adddevice_suit",
+                              "configWay": 8,
+                              "itemType": 0
+                              },
+                              {
+                                  "name": "adddevice_other_camera",
+                                  "detailName": "",
+                                  "image": "",
+                                  "configWay": 2,
+                                  "itemType": 1,
+                                  "lightFlashImages": [
+                                      "icon_add_light2"
+                                  ],
+                                  "lightFlashTexts": [
+                                      "addDevice_help_text2",
+                                      "addDevice_help_text12"
+                                  ],
+                                  "resetImages": [
+                                      "icon_reset_success"
+                                  ],
+                                  "resetTexts": [
+                                      "addDevice_help_text3",
+                                      "addDevice_help_text9",
+                                      "addDevice_help_text5",
+                                      "addDevice_help_text13"
+                                  ]
+                              },
+                              {
+                                  "name": "addDevice_scan_code",
+                                  "detailName": "",
+                                  "image": "",
+                                  "configWay": 7,
+                                  "itemType": 1,
+                              },
+                              {
+                              "name": "addDevice_networked",
+                              "detailName": "",
+                              "configWay": 4,
+                              "itemType": 1
+                              },
+                              {
+                              "name": "scan_LAN",
+                              "detailName": "",
+                              "configWay": 5,
+                              "itemType": 1
+                              }
+                      ],
+
+"deviceList_addkinds":[
+
+    
+                      ]
+}

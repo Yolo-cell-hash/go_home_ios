@@ -1,0 +1,180 @@
+//
+//  JA.pch
+//  Module360
+//
+//  Created by Wynton on 2018/8/10.
+//  Copyright © 2018年 juanvision. All rights reserved.
+//
+
+#ifndef JA_pch
+#define JA_pch
+
+//weakself
+#ifndef weakify
+    #if DEBUG
+        #if __has_feature(objc_arc)
+        #define weakify(object) autoreleasepool{} __weak __typeof__(object) weak##_##object = object;
+        #else
+        #define weakify(object) autoreleasepool{} __block __typeof__(object) block##_##object = object;
+        #endif
+    #else
+        #if __has_feature(objc_arc)
+        #define weakify(object) try{} @finally{} {} __weak __typeof__(object) weak##_##object = object;
+        #else
+        #define weakify(object) try{} @finally{} {} __block __typeof__(object) block##_##object = object;
+        #endif
+    #endif
+#endif
+
+#ifndef strongify
+    #if DEBUG
+        #if __has_feature(objc_arc)
+        #define strongify(object) autoreleasepool{} __typeof__(object) object = weak##_##object;
+        #else
+        #define strongify(object) autoreleasepool{} __typeof__(object) object = block##_##object;
+        #endif
+    #else
+        #if __has_feature(objc_arc)
+        #define strongify(object) try{} @finally{} __typeof__(object) object = weak##_##object;
+        #else
+        #define strongify(object) try{} @finally{} __typeof__(object) object = block##_##object;
+        #endif
+    #endif
+#endif
+
+
+//////////设备类型//////////
+//iPad or iPhone
+#define JA_IPHONE ([[UIDevice currentDevice] userInterfaceIdiom] == UIUserInterfaceIdiomPhone)
+#define JA_IPHONE_5 ([UIScreen instancesRespondToSelector:@selector(currentMode)] ? CGSizeEqualToSize(CGSizeMake(640, 1136), [[UIScreen mainScreen] currentMode].size) : NO)
+#define JA_IPHONE_6 ([UIScreen instancesRespondToSelector:@selector(currentMode)] ? CGSizeEqualToSize(CGSizeMake(750, 1334), [[UIScreen mainScreen] currentMode].size) : NO)
+#define JA_IPHONE_6P ([UIScreen instancesRespondToSelector:@selector(currentMode)] ? CGSizeEqualToSize(CGSizeMake(1242, 2208), [[UIScreen mainScreen] currentMode].size) || CGSizeEqualToSize(CGSizeMake(1125, 2001), [[UIScreen mainScreen] currentMode].size) : NO)
+#define JA_IPHONE_X \
+([UIScreen instancesRespondToSelector:@selector(currentMode)] ?  \
+CGSizeEqualToSize(CGSizeMake(1125, 2436), [[UIScreen mainScreen] currentMode].size) ||  \
+CGSizeEqualToSize(CGSizeMake(1242, 2688), [[UIScreen mainScreen] currentMode].size) ||  \
+CGSizeEqualToSize(CGSizeMake(750, 1624),  [[UIScreen mainScreen] currentMode].size) ||  \
+CGSizeEqualToSize(CGSizeMake(828, 1792), [[UIScreen mainScreen] currentMode].size)  \
+: NO)
+//#define JA_IPHONE_X ([UIScreen instancesRespondToSelector:@selector(currentMode)] ? CGSizeEqualToSize(CGSizeMake(1125, 2436), [[UIScreen mainScreen] currentMode].size) : NO)
+
+
+//对比版本号(如:1.0.0和1.0.1): 小于:<0, 等于:0, 大于:>0
+#define JA_CMP_NUMBER(v1,v2) [v1 compare:v2 options:NSNumericSearch]
+#define JA_SYSTEM_VERSION  [[[UIDevice currentDevice] systemVersion] floatValue]
+
+#define JAColorFromHex(hexValue,a) [UIColor \
+colorWithRed:((float)((hexValue & 0xFF0000) >> 16))/255.0 \
+green:((float)((hexValue & 0xFF00) >> 8))/255.0 \
+blue:((float)(hexValue & 0xFF))/255.0 alpha:a]
+#define UIColorFromHex(hexValue,a) [UIColor \
+colorWithRed:((float)((hexValue & 0xFF0000) >> 16))/255.0 \
+green:((float)((hexValue & 0xFF00) >> 8))/255.0 \
+blue:((float)(hexValue & 0xFF))/255.0 alpha:a]
+
+#define JA_COLOR_HEX(hexValue,a) [UIColor \
+colorWithRed:((float)((hexValue & 0xFF0000) >> 16))/255.0 \
+green:((float)((hexValue & 0xFF00) >> 8))/255.0 \
+blue:((float)(hexValue & 0xFF))/255.0 alpha:a]
+
+#define JA_COLOR_RGBA(_R,_G,_B,_A) [UIColor colorWithRed:_R/255.0 green:_G/255.0 blue:_B/255.0 alpha:_A]
+//WeakSelf必须和StrongSelf成对出现
+//#define WeakSelf @autoreleasepool {}__weak __typeof__(self) self_weak_ = self;
+//#define StrongSelf @autoreleasepool {}__typeof__(self) self = WeakSelf;
+#define JA_WS(ws) __weak typeof(self)ws = self;
+#define WeakSelf @weakify(self); //WeakSelf必须和StrongSelf成对出现
+#define StrongSelf @strongify(self);
+
+#define JA_PATH_DOC [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) objectAtIndex:0]
+
+#define kSCREEN_BOUNDS [UIScreen mainScreen].bounds
+#define kSCREEN_BOUNDS_SIZE [UIScreen mainScreen].bounds.size
+#define kSCREEN_WIDTH  ([UIScreen mainScreen].bounds.size.width)
+#define kSCREEN_HEIGHT ([UIScreen mainScreen].bounds.size.height)
+#define kSCREEN_ShortSide  MIN(([UIScreen mainScreen].bounds.size.width),([UIScreen mainScreen].bounds.size.height))
+#define kSCREEN_LongSide MAX(([UIScreen mainScreen].bounds.size.width),([UIScreen mainScreen].bounds.size.height))
+#define WIDTH_SCALE  kSCREEN_ShortSide / 375
+#define HEIGHT_SCALE kSCREEN_LongSide / 667
+
+#define JA_RandomColor(a) [UIColor colorWithRed:(arc4random() % 255) / 255.0f green:(arc4random() % 255) / 255.0f blue:(arc4random() % 255) / 255.0f alpha:a]
+
+#define JA_PRECONNECT_CHANNEL 4
+///屏幕size
+#define JASCREENSIZE [UIScreen mainScreen].bounds.size
+
+#define JA_DEVICE_VERTICAL @"JA_DEVICE_VERTICAL"//设备竖屏
+#define JA_DEVICE_HORIZONTAL @"JA_DEVICE_HORIZONTAL"//设备横屏
+#define JA_DeviceChangePWDSuccess @"JADeviceChangePWDSuccess" //设置修改密码成功通知
+
+
+//app目录
+#define JA_PATH_JA [JA_PATH_DOC stringByAppendingPathComponent:@"JAAPP"]
+//用户目录
+#define JA_PATH_USER(userName) [JA_PATH_JA stringByAppendingPathComponent:userName]
+//设备目录
+#define JA_PATH_DEVICE(userName,dev) [JA_PATH_USER(userName) stringByAppendingPathComponent:dev]
+//截屏目录
+#define JA_PATH_SCREENSHOT(userName,dev) [JA_PATH_DEVICE(userName,dev) stringByAppendingPathComponent:@"screenShot"]
+//预置位目录
+#define JA_PATH_PRESET(userName,dev) [JA_PATH_DEVICE(userName,dev) stringByAppendingPathComponent:@"presetting"]
+//录屏目录
+#define JA_PATH_SCREEN_RECORD(userName,dev) [JA_PATH_DEVICE(userName,dev) stringByAppendingPathComponent:@"screenRecord"]
+//录像备份临时路径
+#define JA_PATH_TEMPVIDEOBACKUP(userName) [JA_PATH_USER(userName) stringByAppendingPathComponent:@"videoBackupTemp"]
+//云录像下载临时存放目录
+#define JA_PATH_DEVICE_CLOUD_TEMPVIDEOBACKUP(userName,dev) [JA_PATH_DEVICE(userName,dev) stringByAppendingPathComponent:@"cloudvideotempBackup"]
+
+//录像备份
+#define JA_PATH_VIDEOBACKUP(userName,dev) [JA_PATH_DEVICE(userName,dev) stringByAppendingPathComponent:@"videoBackup"]
+
+//设备站位图存放目录
+#define JA_PATH_DEVICE_PLACEHOLDER(userName)   [JA_PATH_USER(userName) stringByAppendingPathComponent:@"thumbnailImage"]
+//临时录像文件
+#define JA_FILE_DEVICE_TEMP_RECORD(userName,dev) [JA_PATH_DEVICE(userName,dev) stringByAppendingPathComponent:@"record_temp.mov"]
+//临时录像备份文件
+#define JA_PATH_TEMPVIDEOBACKUP_File(userName)[JA_PATH_TEMPVIDEOBACKUP(userName) stringByAppendingPathComponent:@"videobackup.mov"]
+
+#define CACHE_DEVICE_LIST_PATH [JA_PATH_DOC stringByAppendingPathComponent:@"CacheDeviceList.plist"]
+//设备类型路径，以eseeid为key，设备类型为value
+#define JA_PATH_DEVICE_TYPE [JA_PATH_DOC stringByAppendingPathComponent:@"deviceType.plist"]
+
+#define CACHE_DEVICE_LIST_VERSION @"1.0"
+
+
+//是否为希伯来文  不同区域的手机包含希伯来语的后缀不一样  中国:he-CN 美国:he-US
+#define JA_heCN_Languages [[[NSUserDefaults standardUserDefaults] objectForKey:@"AppleLanguages"][0] containsString:@"he-"]
+//////////状态栏//////////
+#define kStatusBarRect [UIApplication sharedApplication].statusBarFrame
+#define kStatusBarHeight kStatusBarRect.size.height
+#define kStatusBarWidth kStatusBarRect.size.width
+#define kStatusBarOriginX kStatusBarRect.origin.x
+#define kStatusBarOriginY kStatusBarRect.origin.y
+//////////导航栏//////////
+#define kNavBarHeight self.navigationController.navigationBar.frame.size.height
+
+#define JA_NAV_BOTTOM (self.navigationController.navigationBar.frame.size.height+self.navigationController.navigationBar.frame.origin.y)
+#define JA_TABBAR_HEIGHT self.tabBarController.tabBar.frame.size.height
+
+//多语言
+#define LT(key,table) [[JASettingLanguagesManager shareInstance] localizedStringForKey:@#key tableName: @#table]
+#define L(key) NSLocalizedString(@#key, nil)
+
+//是否启用【UIApplication openURL]对应功能
+#define JA_EnbaleApplicationOpenURL (0)
+
+///空
+#define IsEmpty_String(str) ([str isKindOfClass:[NSNull class]] || str == nil || [[str stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]] length] < 1  || [str isEqualToString:@"<null>"] || [str isEqualToString:@"(null)"]? YES : NO )
+
+//通知
+#define JA_DEVICE_PLAYING_STATUS_NOTIFICATION @"JA_DEVICE_PLAYING_STATUS_NOTIFICATION" // 播放状态通知
+
+
+
+
+#if __OBJC__
+
+#import "JASDKHeader.h"
+
+#endif
+
+#endif /* JA_pch */

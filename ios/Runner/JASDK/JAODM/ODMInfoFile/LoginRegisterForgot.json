@@ -1,0 +1,17 @@
+{
+    "loginLogo":"",
+	"Register":{
+		"RegiesterType":0,
+        "Version": "1.0",
+        "CompanyIntroduceEnable": "0",
+        "PrivacyProtocalEnable": "0"
+	},
+	"Login":{
+        "AppDeclareEnable": "0",
+		"LoginLogoType":0,
+		"PrivacyPolicy":{
+			"zh-hans":"http://www.e-seenet.com/privacypolicy/pp_cn.html",
+			"en":"http://www.e-seenet.com/privacypolicy/pp_en.html"
+		},
+	},
+}

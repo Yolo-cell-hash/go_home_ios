@@ -1,0 +1,14 @@
+"addDevice_share_overdue" = "Aandeel verloopt,opnieuw aanvragen"; 
+"addDevice_share_vailidTime" = "Geldige tijd"; 
+"plural_ios" = "%ld sec"; 
+"adddevice_add_manully" = "handmatig toevoegen"; 
+"text_ID" = "ID"; 
+"addDevice_scan_putInFrame" = "QR-code in het frame zetten,kan automatisch scannen"; 
+"setting_phone_open_camera" = "Please check setup--EseeCloud--enbale camera"; 
+"share" = "Delen"; 
+"photo_album" = "Fotoalbum"; 
+"cancel" = "Annuleren"; 
+"confirm" = "Bevestigen"; 
+"addDevice_point" = "Voer de QR-code van het apparaat of de barcode in het scanvenster in."; 
+"setting_phone_selectAndWrite_options" = "Instelling--EseeCloud--foto controleren,lees-en schrijfoptie selecteren"; 
+"competence_lack" = "Geen toestemming"; 

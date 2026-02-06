@@ -1,5 +1,6 @@
 // vertical_home/welcome_screen.dart
 // Welcome screen with security status icons and backdrop image
+// Made responsive for iPhone testing while optimized for iPad production
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -20,10 +21,17 @@ class WelcomeScreenWidget extends StatelessWidget {
     this.onIconLongPress,
   });
 
+  // Check if this is a small screen (iPhone in portrait)
+  bool _isSmallScreen(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    return size.shortestSide < 600;
+  }
+
   @override
   Widget build(BuildContext context) {
     print('[DEBUG] WelcomeScreenWidget build called');
     final primaryColor = CupertinoTheme.of(context).primaryColor;
+    final isSmallScreen = _isSmallScreen(context);
 
     return Container(
       color: CupertinoColors.systemBackground,
@@ -31,7 +39,7 @@ class WelcomeScreenWidget extends StatelessWidget {
         child: Column(
           children: [
             // Navbar
-            _buildNavbar(primaryColor),
+            _buildNavbar(primaryColor, isSmallScreen),
             // Content - Backdrop image with fade blur and status text
             Expanded(
               child: Stack(
@@ -39,9 +47,11 @@ class WelcomeScreenWidget extends StatelessWidget {
                   // Background image
                   _buildBackgroundImage(),
                   // Gradient overlay
-                  _buildGradientOverlay(),
+                  _buildGradientOverlay(isSmallScreen),
                   // Status text with icons
-                  _buildStatusSection(primaryColor),
+                  isSmallScreen
+                      ? _buildMobileStatusSection(primaryColor)
+                      : _buildStatusSection(primaryColor),
                 ],
               ),
             ),
@@ -52,21 +62,26 @@ class WelcomeScreenWidget extends StatelessWidget {
   }
 
   /// Builds the top navbar with logo and location
-  Widget _buildNavbar(Color primaryColor) {
+  Widget _buildNavbar(Color primaryColor, bool isSmallScreen) {
     print('[DEBUG] WelcomeScreen: Building navbar');
+    final hPadding = isSmallScreen ? 20.0 : 40.0;
+    final vPadding = isSmallScreen ? 15.0 : 30.0;
+    final logoHeight = isSmallScreen ? 50.0 : 75.0;
+    final fontSize = isSmallScreen ? 16.0 : 22.0;
+
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 30),
+      padding: EdgeInsets.symmetric(horizontal: hPadding, vertical: vPadding),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Image.asset('images/new_main_logo.png', height: 75),
+          Image.asset('images/new_main_logo.png', height: logoHeight),
           Row(
             children: [
               Text(
                 'Mumbai Home',
                 style: TextStyle(
                   fontFamily: 'GEG',
-                  fontSize: 22,
+                  fontSize: fontSize,
                   fontWeight: FontWeight.w400,
                   color: primaryColor,
                 ),
@@ -106,13 +121,14 @@ class WelcomeScreenWidget extends StatelessWidget {
   }
 
   /// Builds the gradient overlay at the bottom
-  Widget _buildGradientOverlay() {
+  Widget _buildGradientOverlay(bool isSmallScreen) {
+    final height = isSmallScreen ? 350.0 : 550.0;
     return Positioned(
       bottom: 0,
       left: 0,
       right: 0,
       child: Container(
-        height: 550,
+        height: height,
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
@@ -131,7 +147,68 @@ class WelcomeScreenWidget extends StatelessWidget {
     );
   }
 
-  /// Builds the status section with text and security icons
+  /// Mobile-friendly status section - stacked vertically
+  Widget _buildMobileStatusSection(Color primaryColor) {
+    print('[DEBUG] WelcomeScreen: Building MOBILE status section with icons');
+    return Positioned(
+      bottom: 30,
+      left: 20,
+      right: 20,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // Status text at top
+          Text(
+            'Security System is Armed Away.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: 'GEG',
+              fontSize: 16,
+              fontWeight: FontWeight.w400,
+              color: primaryColor,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 20),
+          // Three icons in a row - smaller for mobile
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Door Lock icon
+              _buildSecurityIcon(
+                index: 0,
+                imagePath: 'images/door_lock.png',
+                isSvg: false,
+                primaryColor: primaryColor,
+                isSmall: true,
+              ),
+              const SizedBox(width: 20),
+              // VDB icon
+              _buildSecurityIcon(
+                index: 1,
+                imagePath: 'images/vdb.svg',
+                isSvg: true,
+                primaryColor: primaryColor,
+                isSmall: true,
+              ),
+              const SizedBox(width: 20),
+              // Camera icon
+              _buildSecurityIcon(
+                index: 2,
+                imagePath: 'images/camera.png',
+                isSvg: false,
+                primaryColor: primaryColor,
+                isSmall: true,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Builds the status section with text and security icons (for iPad)
   Widget _buildStatusSection(Color primaryColor) {
     print('[DEBUG] WelcomeScreen: Building status section with icons');
     return Positioned(
@@ -196,9 +273,15 @@ class WelcomeScreenWidget extends StatelessWidget {
     required String imagePath,
     required bool isSvg,
     required Color primaryColor,
+    bool isSmall = false,
   }) {
     final status = iconStatus[index];
     final isGreen = status == 2;
+
+    // Smaller sizes for mobile
+    final containerSize = isSmall ? 70.0 : 102.0;
+    final imageSize = isSmall ? 24.0 : 38.0;
+    final svgSize = isSmall ? 18.0 : 28.0;
 
     print(
       '[DEBUG] WelcomeScreen: Building security icon $index - status: $status',
@@ -216,8 +299,8 @@ class WelcomeScreenWidget extends StatelessWidget {
         }
       },
       child: Container(
-        width: 102,
-        height: 102,
+        width: containerSize,
+        height: containerSize,
         padding: const EdgeInsets.all(3),
         decoration: BoxDecoration(
           shape: BoxShape.circle,
@@ -239,8 +322,8 @@ class WelcomeScreenWidget extends StatelessWidget {
             child: isSvg
                 ? SvgPicture.asset(
                     imagePath,
-                    width: 28,
-                    height: 28,
+                    width: svgSize,
+                    height: svgSize,
                     fit: BoxFit.contain,
                     allowDrawingOutsideViewBox: true,
                     colorFilter: ColorFilter.mode(
@@ -250,8 +333,8 @@ class WelcomeScreenWidget extends StatelessWidget {
                   )
                 : Image.asset(
                     imagePath,
-                    width: 38,
-                    height: 38,
+                    width: imageSize,
+                    height: imageSize,
                     color: primaryColor,
                     fit: BoxFit.contain,
                   ),

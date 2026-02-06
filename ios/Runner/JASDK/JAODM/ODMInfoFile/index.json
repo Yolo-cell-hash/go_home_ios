@@ -1,0 +1,23 @@
+{
+	"MyDevice":{
+		"ItemStyle":{
+			"SingleDevice":0,
+			"NVR":0,
+			"Gateway":0,
+		},
+		"BottomAddDeviceItem":0,
+		"NavRightItem":0,
+		"Color":{
+			"DeviceStatusColor":{
+				"Connecting":"",
+				"Offline":"",
+				"Online":"",
+				"AuthFail":""
+			}
+		}
+	},
+	"CameraGroup":{
+		"Enable":true,
+	}
+}
+

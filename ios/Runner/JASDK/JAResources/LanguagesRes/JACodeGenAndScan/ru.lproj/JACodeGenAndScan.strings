@@ -1,0 +1,14 @@
+"addDevice_share_overdue" = "Поделиться истекает,пожалуйста,получите его снова"; 
+"addDevice_share_vailidTime" = "Действительное время"; 
+"plural_ios" = "%ld сек"; 
+"adddevice_add_manully" = "добавить вручную"; 
+"text_ID" = "Я БЫ"; 
+"addDevice_scan_putInFrame" = "Вставьте QR-код в рамку,можете сканировать автоматически"; 
+"setting_phone_open_camera" = "Пожалуйста,проверьте настройки-EseeCloud-камера enbale"; 
+"share" = "Поделиться"; 
+"photo_album" = "Фотоальбом"; 
+"cancel" = "отменить"; 
+"confirm" = "подтвердить"; 
+"addDevice_point" = "Пожалуйста,поместите QR-код устройства или штрих-код в окно сканирования."; 
+"setting_phone_selectAndWrite_options" = "Пожалуйста,проверьте настройки-EseeCloud-фото,выберите вариант чтения и записи"; 
+"competence_lack" = "Отсутствует разрешение"; 

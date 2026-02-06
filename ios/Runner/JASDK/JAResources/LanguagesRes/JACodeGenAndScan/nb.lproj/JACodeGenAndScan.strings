@@ -1,0 +1,14 @@
+"addDevice_share_overdue" = "Deling tidsavbrutt,prøv igjen"; 
+"addDevice_share_vailidTime" = "Gyldighetsperiode "; 
+"plural_ios" = "%ld sek"; 
+"adddevice_add_manully" = "legg til manuelt"; 
+"text_ID" = "ID"; 
+"addDevice_scan_putInFrame" = "Tilpass QR-kode til rammen, den skannes automatisk"; 
+"setting_phone_open_camera" = "Vennligst sjekk innstillinger. Aktiver kamera."; 
+"share" = "Del"; 
+"photo_album" = "Galleri"; 
+"cancel" = "Avbryt"; 
+"confirm" = "Bekreft"; 
+"addDevice_point" = "Vennligst sett inn enheten QR-kode eller strekkode i skanneboksen."; 
+"setting_phone_selectAndWrite_options" = "Vennligst sjekk innstillinger. Bilde,velg les og skriv alternativet."; 
+"competence_lack" = "Ingen tillatelse"; 

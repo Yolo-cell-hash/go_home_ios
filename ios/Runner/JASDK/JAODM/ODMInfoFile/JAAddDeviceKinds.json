@@ -1,0 +1,86 @@
+{
+    
+            "version": "1.0.0",
+            "lastChanger": "Wynton",
+            "columns": 1,
+            "addDeviceType":2,
+            "kinds": [
+                              {
+                              "name": "addDevice_choose_device_1",
+                              "image": "icon_wireless_products",
+                              "configWay": 0,
+                              "itemType": 0,
+                              "lightFlashImages": [
+                                                   "icon_add_light2"
+                                                   ],
+                              "lightFlashTexts": [
+                                                  "addDevice_help_text2",
+                                                  "addDevice_help_text12"
+                                                  ],
+                              "resetImages": [
+                                              "icon_reset_success"
+                                              ],
+                              "resetTexts": [
+                                             "addDevice_help_text3",
+                                             "addDevice_help_text9",
+                                             "addDevice_help_text5",
+                                             "addDevice_help_text13"
+                                             ]
+                              },
+                              {
+                              "name": "addDevice_bluetooth_products",
+                              "image": "icon_add_bluetooth_blue",
+                              "configWay": 2,
+                              "itemType": 0,
+                              "lightFlashImages": [
+                                                   "icon_add_light2"
+                                                   ],
+                              "lightFlashTexts": [
+                                                  "addDevice_help_text2",
+                                                  "addDevice_help_text12"
+                                                  ],
+                              "resetImages": [
+                                              "icon_reset_success"
+                                              ],
+                              "resetTexts": [
+                                             "addDevice_help_text3",
+                                             "addDevice_help_text9",
+                                             "addDevice_help_text5",
+                                             "addDevice_help_text13"
+                                             ]
+                              },
+                              {
+                              "name": "addDevice_video_products",
+                              "image": "icon_add_nvr",
+                              "configWay": 3,
+                              "itemType": 0
+                              },
+                              {
+                              "name": "device_mini_NVR",
+                              "image": "icon_add_mini_nvr",
+                              "configWay": 1,
+                              "itemType": 0
+                              },
+                              {
+                              "name": "adddevice_Touch_screen_NVR",
+                              "image": "icon_add_touch_screen_nvr",
+                              "configWay": 6,
+                              "itemType": 0
+                              },
+                              {
+                              "name": "addDevice_networked",
+                              "configWay": 4,
+                              "itemType": 1
+                              },
+                              {
+                              "name": "scan_LAN",
+                              "configWay": 5,
+                              "itemType": 1
+                              }
+                      ],
+
+"deviceList_addkinds":[
+
+    
+                      ]
+}

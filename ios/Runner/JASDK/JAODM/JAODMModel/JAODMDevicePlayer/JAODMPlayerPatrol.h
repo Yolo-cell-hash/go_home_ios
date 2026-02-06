@@ -1,0 +1,20 @@
+//
+//  JAODMPlayerPatrol.h
+//  eseecloud
+//
+//  Created by Wynton on 2018/10/17.
+//  Copyright © 2018 juanvision. All rights reserved.
+//
+
+#import <Foundation/Foundation.h>
+
+NS_ASSUME_NONNULL_BEGIN
+
+@interface JAODMPlayerPatrol : NSObject
+
+@property (nonatomic, assign) BOOL enable;
+@property (nonatomic, assign) BOOL defaultStart;
+
+@end
+
+NS_ASSUME_NONNULL_END

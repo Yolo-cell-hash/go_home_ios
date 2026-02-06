@@ -1,0 +1,90 @@
+{
+  "Project": "eseecloud",
+  "autoConfigPassword": false,
+  "Color": {
+    "ThemeColor": "#3e78c4",
+    "previewThemeColor": "#FFFFFF",
+    "previewSelectChannelColor": "#800080",
+    "previewBackgroupColor": "#000000",
+    "previewToolBottomColor": "#1D1F21",
+    "previewToolTopColor": "#1D1F21",
+    "previewToolSelectColor": "#3e78c4"
+  },
+  "APPInfo": {
+    "AppBundle": "Wa5sQRJYB9Fq4eKlm74GvpF7",
+    "AppBundleConfusing": "Japass^2>.j",
+    "RealBundle": "Wa5sQRJYB9Fq4eKlm74GvpF7",
+    "RealBundleConfusing": "Japass^2>.j"
+  },
+  "APPID":"1032277907",
+  "BuildConfig": {
+    "applicationId": "com.juanvision.eseecloud30",
+    "versionCode": 301,
+    "versionName": "3.0.1.1",
+    "manifestPlaceholders": {
+      "app_name": "Pano360S",
+      "app_icon": "@mipmap/icon_logo",
+      "app_package_name": "com.generalcomp.pano360s"
+    }
+  },
+  "UserSettings": {
+    "LoginEnable": true,
+    "LocalEnable": true,
+    "DefaultCountry": "",
+    "UserIsolation": true,
+    "Thirdparty": [
+        {
+            "key": "wx800615d41c22b646",
+            "type": 0,
+            "enble": true,
+            "icon": "icon_login_wechat_pre",
+            "name":"login_wechat"
+        },
+        {
+            "key": "google",
+            "type": 2,
+            "enble": true,
+            "icon": "icon_login_google",
+            "name":"login_google"
+        }
+    ]
+  },
+  "passwordConfigWay":"1",
+  "SupportAddDeviceType": 15,
+  "dateFormat":0,
+  "SupportHomeSet": false,
+  "SupportFullColorMode": true,
+  "SupportScreenshots": true,
+  "speakEnable": true,
+  "SquareEnable": true,
+  "StoreURL": "https://openapi.dvr163.com:441/cloudshopapp_v3/index.html",
+  "StoreURLTest":"https://openapitest.dvr163.com/cloudshopapp_v3/index.html",
+  "StoreWebURL":"",
+  "preconnectIPCCount": 8,
+  "preconnectNVRCount": 3,
+  "gatewayModeEnable":true,
+  "tableNvrGatewayModeEnable":true,
+  "DefaultMonopoly":false,
+  "ShowDevicePasswordAndUser":true,
+  "fixMode180Enable": true,
+  "fixMode360Enable": true,
+  "temoVideo": [
+              {
+              "language":"en",
+              "url":"http://download.dvr163.com/Video/eseecloud3_eng.mp4"
+              },
+              {
+              "language":"zh",
+              "url":"http://download.dvr163.com/Video/eseecloud3_chs.mp4"
+              
+              }
+    ],
+  "capture": {
+      "supportImageSolution": false,
+      "imageWidth": 640,
+      "imageHeight": 480
+  },
+  "wxpaydomain":"openapi.dvr163.com",
+  "alipayschemes":"juanvisioneseecloud3alipayyishiyun"
+  
+}

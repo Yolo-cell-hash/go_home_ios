@@ -1,0 +1,201 @@
+{
+	"Helps": [
+        {
+            "HelpType": 0,
+            "SeparatorStyle": 0,
+            "Rows": [
+                [{
+                    "TextSize": "17",
+                    "TextColor": "#333333",
+                    "Type": 0,
+                    "Blod": false,
+                    "Value": "adddevice_turn_on_power"
+                }],
+                [{
+                    "TextSize": "13",
+                    "TextColor": "#808080",
+                    "Type": 3,
+                    "Blod": false,
+                    "Value": "icon_power_supply"
+                }],
+                [{
+                    "TextSize": "17",
+                    "TextColor": "#333333",
+                    "Type": 0,
+                    "Blod": false,
+                    "Value": "adddevice_check_device_light"
+                }],
+                [{
+                    "TextSize": "13",
+                    "TextColor": "#808080",
+                    "Type": 3,
+                    "Blod": false,
+                    "Value": "icon_start_flicker"
+                }],
+                [{
+                    "TextSize": "17",
+                    "TextColor": "#333333",
+                    "Type": 0,
+                    "Blod": false,
+                    "Value": "adddevice_hear_tone_prompt"
+                }],
+                [{
+                    "TextSize": "13",
+                    "TextColor": "#E72222",
+                    "InlineImage": "icon_warning",
+                    "InlineImageHeight": "15",
+                    "Type": 2,
+                    "Blod": false,
+                    "InlineImageWidth": "15",
+                    "Value": "adddevice_help_prompt"
+                }]
+            ],
+            "Name": "adddevice_start_configuration_prompt"
+        },
+    {
+		"HelpType": 0,
+		"SeparatorStyle": 0,
+		"Rows": [
+            [{
+                "TextSize": "17",
+                "TextColor": "#333333",
+                "Type": 0,
+                "Blod": false,
+                "Value": "adddevice_make_sure_connect_network"
+            }, {
+                "TextSize": "14",
+                "TextColor": "#333333",
+                "Type": 0,
+                "Blod": false,
+                "Value": "adddevice_make_sure_connect_network_detail"
+            }],
+            [{
+                "TextSize": "13",
+                "TextColor": "#808080",
+                "Type": 3,
+                "Blod": false,
+                "Value": "icon_add_help_arrow"
+            }],
+			[{
+				"TextSize": "17",
+				"TextColor": "#333333",
+				"Type": 0,
+				"Blod": false,
+				"Value": "adddevice_turn_on_wifi"
+			}, {
+				"TextSize": "14",
+				"TextColor": "#333333",
+				"Type": 0,
+				"Blod": false,
+                "Value": "adddevice_go_to_set_page"
+            }],
+            [{
+                "TextSize": "13",
+                "TextColor": "#808080",
+                "Type": 3,
+                "Blod": false,
+                "Value": "icon_add_help_arrow"
+            }],
+            [{
+				"TextSize": "17",
+				"TextColor": "#333333",
+				"Type": 0,
+				"Blod": false,
+				"Value": "adddevice_select_device_wifi"
+            }, {
+                "TextSize": "14",
+                "TextColor": "#333333",
+                "Type": 0,
+                "Blod": false,
+                "Value": "adddevice_wifi_list_select"
+            }],
+            [{
+                "TextSize": "13",
+                "TextColor": "#808080",
+                "Type": 1,
+                "Blod": false,
+                "Value": "icon_ipc_wifi_photo"
+            }],
+            [{
+                "TextSize": "13",
+                "TextColor": "#808080",
+                "Type": 3,
+                "Blod": false,
+                "Value": "icon_add_help_arrow"
+            }],
+            [{
+                "TextSize": "17",
+                "TextColor": "#333333",
+                "Type": 0,
+                "Blod": false,
+                "Value": "adddevice_return_APP"
+            }, {
+                "TextSize": "14",
+                "TextColor": "#333333",
+                "Type": 0,
+                "Blod": false,
+                "Value": "adddevice_wait_for_wifi_icon"
+            }],
+            [{
+                "TextSize": "13",
+                "TextColor": "#808080",
+                "Type": 1,
+                "Blod": false,
+                "Value": "icon_wifi_display"
+            }]
+		],
+		"Name": "adddevice_network_configuration"
+    },
+    {
+        "HelpType": 0,
+        "SeparatorStyle": 0,
+        "Rows": [
+            [{
+                "TextSize": "17",
+                "TextColor": "#333333",
+                "Type": 0,
+                "Blod": false,
+                "Value": "adddevice_first_step_turn_on_power"
+            }],
+            [{
+                "TextSize": "13",
+                "TextColor": "#808080",
+                "Type": 3,
+                "Blod": false,
+                "Value": "icon_power_supply"
+            }],
+            [{
+                "TextSize": "17",
+                "TextColor": "#333333",
+                "Type": 0,
+                "Blod": false,
+                "Value": "adddevice_press_reset_until_light_flash"
+            }],
+            [{
+                "TextSize": "13",
+                "TextColor": "#808080",
+                "Type": 3,
+                "Blod": false,
+                "Value": "icon-resrt_on"
+            }],
+            [{
+                "TextSize": "17",
+                "TextColor": "#333333",
+                "Type": 0,
+                "Blod": false,
+                "Value": "adddevice_hear_tone_prompt"
+            }],
+            [{
+                "TextSize": "13",
+                "TextColor": "#E72222",
+                "InlineImage": "icon_warning",
+                "InlineImageHeight": "15",
+                "Type": 2,
+                "Blod": false,
+                "InlineImageWidth": "15",
+                "Value": "adddevice_help_prompt"
+            }]
+        ],
+        "Name": "adddevice_reset_configuration_prompt"
+    }]
+}

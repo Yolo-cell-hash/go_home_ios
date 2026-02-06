@@ -1,0 +1,14 @@
+"addDevice_share_overdue" = "Akcie vypršely,prosím,znovu zakoupit"; 
+"addDevice_share_vailidTime" = "Doba platnosti"; 
+"plural_ios" = "%ld sekund"; 
+"adddevice_add_manully" = "přidat ručně"; 
+"text_ID" = "ID"; 
+"addDevice_scan_putInFrame" = "Vložte kód QR do rámečku a můžete jej automaticky skenovat."; 
+"setting_phone_open_camera" = "Otevřete prosím nastavení-> snadno zobrazit cloud-> zapněte přepínač fotoaparátu"; 
+"share" = "Sdílet"; 
+"photo_album" = "Album"; 
+"cancel" = "Zrušit"; 
+"confirm" = "Určit"; 
+"addDevice_point" = "Do skenovacího rámečku vložte kód QR zařízení nebo čárový kód."; 
+"setting_phone_selectAndWrite_options" = "Otevřete Nastavení-> Vision Cloud -> Photos,vyberte možnosti pro čtení a zápis"; 
+"competence_lack" = "Žádné povolení"; 

@@ -1,0 +1,465 @@
+{
+	"Author": "Wynton",
+	"Version": "1.0",
+	"Helps": [{
+		"HelpType": 1,
+		"SeparatorStyle": 0,
+		"Rows": [
+			[{
+				"TextSize": "0",
+				"Language": "en",
+				"TextColor": "0",
+				"Type": 0,
+				"Blod": false,
+				"Value": "http:\/\/download.dvr163.com\/Video\/eseecloud3_eng.mp4"
+			}, {
+				"TextSize": "0",
+				"Language": "zh",
+				"TextColor": "0",
+				"Type": 0,
+				"Blod": false,
+				"Value": "http:\/\/download.dvr163.com\/Video\/eseecloud3_chs.mp4"
+			}]
+		],
+		"Name": "help_teach_video"
+	}, {
+		"HelpType": 0,
+		"SeparatorStyle": 0,
+		"Rows": [
+			[{
+				"TextSize": "13",
+				"TextColor": "#808080",
+				"Type": 0,
+				"Blod": false,
+				"Value": "help_preview_ttextTips_1"
+			}],
+			[{
+				"TextSize": "13",
+				"TextColor": "#808080",
+				"InlineImage": "help_preview_1",
+				"InlineImageHeight": "40",
+				"Type": 2,
+				"Blod": false,
+				"InlineImageWidth": "40",
+				"Value": "help_preview_ttextTips_2"
+			}],
+			[{
+				"TextSize": "13",
+				"TextColor": "#808080",
+				"InlineImage": "help_preview_2",
+				"InlineImageHeight": "40",
+				"Type": 2,
+				"Blod": false,
+				"InlineImageWidth": "40",
+				"Value": "help_preview_ttextTips_3"
+			}],
+			[{
+				"TextSize": "13",
+				"TextColor": "#808080",
+				"InlineImage": "help_preview_3",
+				"InlineImageHeight": "40",
+				"Type": 2,
+				"Blod": false,
+				"InlineImageWidth": "40",
+				"Value": "help_preview_ttextTips_4"
+			}],
+			[{
+				"TextSize": "13",
+				"TextColor": "#808080",
+				"InlineImage": "help_preview_4",
+				"InlineImageHeight": "40",
+				"Type": 2,
+				"Blod": false,
+				"InlineImageWidth": "40",
+				"Value": "help_preview_ttextTips_5"
+			}],
+			[{
+				"TextSize": "13",
+				"TextColor": "#808080",
+				"InlineImage": "help_preview_5",
+				"InlineImageHeight": "40",
+				"Type": 2,
+				"Blod": false,
+				"InlineImageWidth": "40",
+				"Value": "help_preview_ttextTips_6"
+			}],
+			[{
+				"TextSize": "13",
+				"TextColor": "#808080",
+				"InlineImage": "help_preview_6",
+				"InlineImageHeight": "40",
+				"Type": 2,
+				"Blod": false,
+				"InlineImageWidth": "40",
+				"Value": "help_preview_ttextTips_7"
+			}],
+			[{
+				"TextSize": "13",
+				"TextColor": "#808080",
+				"InlineImage": "help_preview_7",
+				"InlineImageHeight": "40",
+				"Type": 2,
+				"Blod": false,
+				"InlineImageWidth": "40",
+				"Value": "help_preview_ttextTips_8"
+			}],
+			[{
+				"TextSize": "13",
+				"TextColor": "#808080",
+				"InlineImage": "help_preview_8",
+				"InlineImageHeight": "40",
+				"Type": 2,
+				"Blod": false,
+				"InlineImageWidth": "40",
+				"Value": "help_preview_ttextTips_9"
+			}],
+			[{
+				"TextSize": "13",
+				"TextColor": "#808080",
+				"InlineImage": "help_preview_9",
+				"InlineImageHeight": "40",
+				"Type": 2,
+				"Blod": false,
+				"InlineImageWidth": "40",
+				"Value": "help_preview_ttextTips_10"
+			}],
+			[{
+				"TextSize": "13",
+				"TextColor": "#808080",
+				"InlineImage": "help_preview_10",
+				"InlineImageHeight": "40",
+				"Type": 2,
+				"Blod": false,
+				"InlineImageWidth": "40",
+				"Value": "help_preview_ttextTips_11"
+			}],
+			[{
+				"TextSize": "13",
+				"TextColor": "#808080",
+				"InlineImage": "help_preview_11",
+				"InlineImageHeight": "40",
+				"Type": 2,
+				"Blod": false,
+				"InlineImageWidth": "40",
+				"Value": "help_preview_ttextTips_12"
+			}],
+			[{
+				"TextSize": "13",
+				"TextColor": "#808080",
+				"InlineImage": "help_preview_12",
+				"InlineImageHeight": "40",
+				"Type": 2,
+				"Blod": false,
+				"InlineImageWidth": "40",
+				"Value": "help_preview_ttextTips_13"
+			}],
+			[{
+				"TextSize": "13",
+				"TextColor": "#808080",
+				"InlineImage": "help_preview_13",
+				"InlineImageHeight": "40",
+				"Type": 2,
+				"Blod": false,
+				"InlineImageWidth": "40",
+				"Value": "help_preview_ttextTips_14"
+			}],
+                 
+                 [{
+                  "TextSize": "13",
+                  "TextColor": "#808080",
+                  "InlineImage": "icon_screen_scale",
+                  "InlineImageHeight": "40",
+                  "Type": 2,
+                  "Blod": false,
+                  "InlineImageWidth": "40",
+                  "Value": "help_preview_ttextTips_17"
+                  }],
+			[{
+				"TextSize": "13",
+				"TextColor": "#808080",
+				"InlineImage": "help_preview_14",
+				"InlineImageHeight": "40",
+				"Type": 2,
+				"Blod": false,
+				"InlineImageWidth": "40",
+				"Value": "help_preview_ttextTips_15"
+			}],
+			[{
+				"TextSize": "13",
+				"TextColor": "#808080",
+				"Type": 1,
+				"Blod": false,
+				"Value": "help_preview_15"
+			}],
+			[{
+				"TextSize": "13",
+				"TextColor": "#808080",
+				"Type": 0,
+				"Blod": false,
+				"Value": "help_preview_ttextTips_16"
+			}]
+		],
+		"Name": "help_generalDevice_preview"
+              },        {
+              "Name": "help_cloud_storage_textTips_1",
+              "HelpType": 0,
+              "SeparatorStyle": 0,
+              "Rows": [
+                       [
+                        {
+                        "Type": 0,
+                        "Value": "help_cloud_storage_textTips_2",
+                        "TextColor": "#000000",
+                        "TextSize": "14",
+                        "Blod": false
+                        },
+                        {
+                        "Type": 0,
+                        "Value": "help_addDevice_textTips_2",
+                        "TextColor": "#808080",
+                        "TextSize": "13",
+                        "Blod": false
+                        },
+                        {
+                        "Type": 0,
+                        "Value": "help_cloud_storage_textTips_3",
+                        "TextColor": "#808080",
+                        "TextSize": "13",
+                        "Blod": false
+                        }
+                        ],
+                       [
+                        {
+                        "Type": 1,
+                        "Value": "help_cloud_1",
+                        "TextColor": "#7f8c8d",
+                        "TextSize": "16",
+                        "Blod": false
+                        }
+                        ],
+                       [
+                        {
+                        "Type": 0,
+                        "Value": "help_cloud_storage_textTips_4",
+                        "TextColor": "#808080",
+                        "TextSize": "13",
+                        "Blod": false
+                        }
+                        ],
+                       [
+                        {
+                        "Type": 1,
+                        "Value": "help_cloud_2",
+                        "TextColor": "#7f8c8d",
+                        "TextSize": "16",
+                        "Blod": false
+                        }
+                        ],
+                       [
+                        {
+                        "Type": 0,
+                        "Value": "help_cloud_storage_textTips_5",
+                        "TextColor": "#808080",
+                        "TextSize": "13",
+                        "Blod": false
+                        }
+                        ],
+                       [
+                        {
+                        "Type": 1,
+                        "Value": "help_cloud_3",
+                        "TextColor": "#7f8c8d",
+                        "TextSize": "16",
+                        "Blod": false
+                        }
+                        ],
+                       [
+                        {
+                        "Type": 0,
+                        "Value": "",
+                        "TextColor": "#808080",
+                        "TextSize": "13",
+                        "Blod": false
+                        }
+                        ],
+                       [
+                        {
+                        "Type": 1,
+                        "Value": "help_cloud_4",
+                        "TextColor": "#7f8c8d",
+                        "TextSize": "16",
+                        "Blod": false
+                        }
+                        ],
+                       [
+                        {
+                        "Type": 0,
+                        "Value": "help_cloud_storage_textTips_6",
+                        "TextColor": "#000000",
+                        "TextSize": "14",
+                        "Blod": false
+                        },
+                        {
+                        "Type": 0,
+                        "Value": "help_cloud_storage_textTips_7",
+                        "TextColor": "#808080",
+                        "TextSize": "13",
+                        "Blod": false
+                        }
+                        ],
+                       [
+                        {
+                        "Type": 1,
+                        "Value": "help_cloud_1",
+                        "TextColor": "#7f8c8d",
+                        "TextSize": "16",
+                        "Blod": false
+                        }
+                        ],
+                       [
+                        {
+                        "Type": 0,
+                        "Value": "help_cloud_storage_textTips_9",
+                        "TextColor": "#808080",
+                        "TextSize": "13",
+                        "Blod": false
+                        }
+                        ],
+                       [
+                        {
+                        "Type": 1,
+                        "Value": "help_cloud_5",
+                        "TextColor": "#7f8c8d",
+                        "TextSize": "16",
+                        "Blod": false
+                        }
+                        ],
+                       [
+                        {
+                        "Type": 0,
+                        "Value": "",
+                        "TextColor": "#808080",
+                        "TextSize": "13",
+                        "Blod": false
+                        }
+                        ],
+                       [
+                        {
+                        "Type": 1,
+                        "Value": "help_cloud_6",
+                        "TextColor": "#7f8c8d",
+                        "TextSize": "16",
+                        "Blod": false
+                        }
+                        ],
+                       [
+                        {
+                        "Type": 0,
+                        "Value": "",
+                        "TextColor": "#808080",
+                        "TextSize": "13",
+                        "Blod": false
+                        }
+                        ],
+                       [
+                        {
+                        "Type": 1,
+                        "Value": "help_cloud_7",
+                        "TextColor": "#7f8c8d",
+                        "TextSize": "16",
+                        "Blod": false
+                        }
+                        ]
+                       ]
+              },
+    {
+		"HelpType": 0,
+		"SeparatorStyle": 1,
+		"Rows": [
+			[{
+				"TextSize": "14",
+				"TextColor": "#000000",
+				"Type": 0,
+				"Blod": false,
+				"Value": "help_normal_problem_text_1"
+			}, {
+				"TextSize": "13",
+				"TextColor": "#808080",
+				"Type": 0,
+				"Blod": false,
+				"Value": "help_normal_problem_text_2"
+			}, {
+				"TextSize": "13",
+				"TextColor": "#808080",
+				"Type": 0,
+				"Blod": false,
+				"Value": "help_normal_problem_text_3"
+			}],
+			[{
+				"TextSize": "14",
+				"TextColor": "#000000",
+				"Type": 0,
+				"Blod": false,
+				"Value": "help_normal_problem_text_4"
+			}, {
+				"TextSize": "13",
+				"TextColor": "#808080",
+				"Type": 0,
+				"Blod": false,
+				"Value": "help_normal_problem_text_5"
+			}, {
+				"TextSize": "13",
+				"TextColor": "#808080",
+				"Type": 0,
+				"Blod": false,
+				"Value": "help_normal_problem_text_6"
+			}],
+			[{
+				"TextSize": "14",
+				"TextColor": "#000000",
+				"Type": 0,
+				"Blod": false,
+				"Value": "help_normal_problem_text_7"
+			}, {
+				"TextSize": "13",
+				"TextColor": "#808080",
+				"Type": 0,
+				"Blod": false,
+				"Value": "help_normal_problem_text_8"
+			}, {
+				"TextSize": "13",
+				"TextColor": "#808080",
+				"Type": 0,
+				"Blod": false,
+				"Value": "help_normal_problem_text_9"
+			}],
+			[{
+				"TextSize": "14",
+				"TextColor": "#000000",
+				"Type": 0,
+				"Blod": false,
+				"Value": "help_normal_problem_text_10"
+			}, {
+				"TextSize": "13",
+				"TextColor": "#808080",
+				"Type": 0,
+				"Blod": false,
+				"Value": "help_normal_problem_text_11"
+			}],
+			[{
+				"TextSize": "14",
+				"TextColor": "#000000",
+				"Type": 0,
+				"Blod": false,
+				"Value": "help_normal_problem_text_12"
+			}, {
+				"TextSize": "13",
+				"TextColor": "#808080",
+				"Type": 0,
+				"Blod": false,
+				"Value": "help_normal_problem_text_13"
+			}]
+		],
+		"Name": "help_normal_problem"
+	}]
+}

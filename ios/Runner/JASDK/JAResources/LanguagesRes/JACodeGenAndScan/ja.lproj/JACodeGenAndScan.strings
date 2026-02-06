@@ -1,0 +1,14 @@
+"addDevice_share_overdue" = "共有が期限切れになりました"; 
+"addDevice_share_vailidTime" = "有効時間"; 
+"plural_ios" = "%ld秒"; 
+"adddevice_add_manully" = "手動で追加"; 
+"text_ID" = "ID"; 
+"addDevice_scan_putInFrame" = "QRコードをスキャンして登録することができます"; 
+"setting_phone_open_camera" = "セットアップを確認してください-EseeCloud-enbaleカメラ"; 
+"share" = "シェア"; 
+"photo_album" = "フォトアルバム"; 
+"cancel" = "キャンセル"; 
+"confirm" = "確認"; 
+"addDevice_point" = "デバイスのQRコードまたはバーコードをスキャンボックスに入れてください。"; 
+"setting_phone_selectAndWrite_options" = "セットアップを確認してください-EseeCloud-写真、読み書きオプションを選択してください"; 
+"competence_lack" = "全く許可しません"; 

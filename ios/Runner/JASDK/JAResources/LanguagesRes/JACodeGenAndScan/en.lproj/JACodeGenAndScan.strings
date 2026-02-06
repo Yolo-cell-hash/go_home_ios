@@ -1,0 +1,14 @@
+"addDevice_share_overdue" = "Share expires,please get it again"; 
+"addDevice_share_vailidTime" = "Valid time"; 
+"plural_ios" = "%ld sec"; 
+"adddevice_add_manully" = "add manually "; 
+"text_ID" = "ID"; 
+"addDevice_scan_putInFrame" = "Put QR code into the frame,can scan automatically"; 
+"setting_phone_open_camera" = "Please check setup--EseeCloud--enbale camera"; 
+"share" = "Share"; 
+"photo_album" = "Photo album"; 
+"cancel" = "Cancel"; 
+"confirm" = "Confirm"; 
+"addDevice_point" = "Please put the device QR code or barcode into the scan box."; 
+"setting_phone_selectAndWrite_options" = "Please check setup--EseeCloud--photo,choose read and write option"; 
+"competence_lack" = "No permission"; 

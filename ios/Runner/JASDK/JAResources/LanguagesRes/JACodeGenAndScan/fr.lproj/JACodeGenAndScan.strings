@@ -1,0 +1,14 @@
+"addDevice_share_overdue" = "Le partage a expiré"; 
+"addDevice_share_vailidTime" = "Heure valide"; 
+"plural_ios" = "%ld sec"; 
+"adddevice_add_manully" = "Ajouter manuellement"; 
+"text_ID" = "ID"; 
+"addDevice_scan_putInFrame" = "Mettez le code QR dans le cadre pour scanner automatiquement"; 
+"setting_phone_open_camera" = "Vérifier la configuration -EseeCloud- et activer la caméra "; 
+"share" = "Partager"; 
+"photo_album" = "Album photo"; 
+"cancel" = "Annuler"; 
+"confirm" = "Confirmer"; 
+"addDevice_point" = "Veuillez mettre le code QR ou le code-barres de l\'appareil dans le cadre du scanner."; 
+"setting_phone_selectAndWrite_options" = "Vérifier la configuration -EseeCloud- photo, choisir l\'option lire et écrire"; 
+"competence_lack" = "Aucune autorisation"; 

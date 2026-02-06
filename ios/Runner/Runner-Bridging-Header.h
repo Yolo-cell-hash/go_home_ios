@@ -1,1 +1,6 @@
 #import "GeneratedPluginRegistrant.h"
+#import "JACameraWrapper.h"
+#import "JASDKHeader.h"
+#import "JAPreviewMultipleViewController.h"
+#import "JAPreviewBaseViewController.h"
+#import "JAMultivideosPlayer.h"

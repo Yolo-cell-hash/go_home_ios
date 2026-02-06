@@ -1,0 +1,14 @@
+"addDevice_share_overdue" = "Condivisione scaduta,prego ripetere operazione"; 
+"addDevice_share_vailidTime" = "Orario valido"; 
+"plural_ios" = "%ld sec"; 
+"adddevice_add_manully" = "Aggiungi manualmente"; 
+"text_ID" = "ID"; 
+"addDevice_scan_putInFrame" = "Inserire il codice QR nel riquadro,verrà scannerizzato automatcamente"; 
+"setting_phone_open_camera" = "Prego verificare applicativo,abilitare videocamera"; 
+"share" = "Condividere"; 
+"photo_album" = "Album foto"; 
+"cancel" = "Eliminare"; 
+"confirm" = "Confermare"; 
+"addDevice_point" = "Si prega di inserire il codice QR del dispositivo o il codice a barre nella casella di scansione."; 
+"setting_phone_selectAndWrite_options" = "Prego controllare impostazioni applicativo,Selezionare leggi e scrivi"; 
+"competence_lack" = "Nessun permesso"; 

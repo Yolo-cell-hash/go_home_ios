@@ -1,0 +1,14 @@
+"addDevice_share_overdue" = "Osakkeen voimassaolo päättyi,hanki uudelleen"; 
+"addDevice_share_vailidTime" = "Voimassaolo"; 
+"plural_ios" = "%ld sekuntia"; 
+"adddevice_add_manully" = "lisää manuaalisesti"; 
+"text_ID" = "ID"; 
+"addDevice_scan_putInFrame" = "Laita QR-koodi ruutuun ja voit skannata sen automaattisesti."; 
+"setting_phone_open_camera" = "Avaa asetukset-> helppo katsella pilvi-> kytke kamerakytkin päälle"; 
+"share" = "osake"; 
+"photo_album" = "galleria"; 
+"cancel" = "peruttu"; 
+"confirm" = "määrittää"; 
+"addDevice_point" = "Laita laite QR-koodiin tai viivakoodiin skannauslaatikkoon."; 
+"setting_phone_selectAndWrite_options" = "Avaa Asetukset-> Vision pilvi -> Valokuvat,valitse luku-ja kirjoitusasetukset"; 
+"competence_lack" = "Ei lupaa"; 

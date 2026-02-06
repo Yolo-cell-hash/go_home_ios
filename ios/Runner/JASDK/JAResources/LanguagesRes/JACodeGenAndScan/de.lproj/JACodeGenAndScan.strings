@@ -1,0 +1,14 @@
+"addDevice_share_overdue" = "Teilen-Berechtigung abgelaufen, bitte erneut anfordern"; 
+"addDevice_share_vailidTime" = "Gültigkeitszeit"; 
+"plural_ios" = "%ld Sek"; 
+"adddevice_add_manully" = "manuell hinzufügen"; 
+"text_ID" = "ID"; 
+"addDevice_scan_putInFrame" = "QR im Rahmen platzieren, um diesen zu scannen"; 
+"setting_phone_open_camera" = "Bitte prüfen Einstellungen--EseeCloud—Kamera aktivieren "; 
+"share" = "teilen"; 
+"photo_album" = "Foto Album"; 
+"cancel" = "Abgesagt"; 
+"confirm" = "Bestätigen"; 
+"addDevice_point" = "Bitte legen Sie den QR-Code oder Barcode des Geräts in die Scan-Box."; 
+"setting_phone_selectAndWrite_options" = "Bitte prüfen Einstellungen--EseeCloud—Foto, Lese- und Schreiboption wählen"; 
+"competence_lack" = "Keine Berechtigung"; 

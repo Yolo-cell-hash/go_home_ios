@@ -17,6 +17,9 @@
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
 		E80C67A75CE7A094A9951BEC /* Pods_RunnerTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 45E4D0097D09DD3384EF58F2 /* Pods_RunnerTests.framework */; };
+		JACPLG001A2B3C4D5E6F7890 /* JACameraPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = JACPLGF001A2B3C4D5E6F789 /* JACameraPlugin.swift */; };
+		JACVFT001A2B3C4D5E6F7890 /* JACameraViewFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = JACVFTF001A2B3C4D5E6F789 /* JACameraViewFactory.swift */; };
+		JACWRP001A2B3C4D5E6F7890 /* JACameraWrapper.m in Sources */ = {isa = PBXBuildFile; fileRef = JACWRPF001A2B3C4D5E6F789 /* JACameraWrapper.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -67,6 +70,10 @@
 		97C147021CF9000F007C117D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		BC527821BD5178C81E563BDE /* Pods-Runner.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.profile.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.profile.xcconfig"; sourceTree = "<group>"; };
 		D495A07D94319A92FAF1C197 /* Pods_Runner.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Runner.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		JACPLGF001A2B3C4D5E6F789 /* JACameraPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JACameraPlugin.swift; sourceTree = "<group>"; };
+		JACVFTF001A2B3C4D5E6F789 /* JACameraViewFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JACameraViewFactory.swift; sourceTree = "<group>"; };
+		JACWRPH001A2B3C4D5E6F789 /* JACameraWrapper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = JACameraWrapper.h; sourceTree = "<group>"; };
+		JACWRPF001A2B3C4D5E6F789 /* JACameraWrapper.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = JACameraWrapper.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -155,6 +162,10 @@
 				1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */,
 				74858FAE1ED2DC5600515810 /* AppDelegate.swift */,
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
+				JACPLGF001A2B3C4D5E6F789 /* JACameraPlugin.swift */,
+				JACVFTF001A2B3C4D5E6F789 /* JACameraViewFactory.swift */,
+				JACWRPH001A2B3C4D5E6F789 /* JACameraWrapper.h */,
+				JACWRPF001A2B3C4D5E6F789 /* JACameraWrapper.m */,
 			);
 			path = Runner;
 			sourceTree = "<group>";
@@ -401,6 +412,9 @@
 			files = (
 				74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */,
 				1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */,
+				JACPLG001A2B3C4D5E6F7890 /* JACameraPlugin.swift in Sources */,
+				JACVFT001A2B3C4D5E6F7890 /* JACameraViewFactory.swift in Sources */,
+				JACWRP001A2B3C4D5E6F7890 /* JACameraWrapper.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -495,10 +509,106 @@
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				DEVELOPMENT_TEAM = H3HPR8KNJB;
 				ENABLE_BITCODE = NO;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/Runner/JASDK/JAHeader",
+					"$(SRCROOT)/Runner/JASDK/JACategory",
+					"$(SRCROOT)/Runner/JASDK/JAMedia",
+					"$(SRCROOT)/Runner/JASDK/JAMedia/JUAN",
+					"$(SRCROOT)/Runner/JASDK/JAMedia/JUAN/include",
+					"$(SRCROOT)/Runner/JASDK/JAMedia/JUAN/include/curl",
+					"$(SRCROOT)/Runner/JASDK/JAMedia/ffmpeg",
+					"$(SRCROOT)/Runner/JASDK/JAMedia/ffmpeg/include",
+					"$(SRCROOT)/Runner/JASDK/JAMedia/ffmpeg/x264",
+					"$(SRCROOT)/Runner/JASDK/JAMedia/ffmpeg/x264/include",
+					"$(SRCROOT)/Runner/JASDK/JAMedia/RTMP",
+					"$(SRCROOT)/Runner/JASDK/JAMedia/RTMP/include",
+					"$(SRCROOT)/Runner/JASDK/JAMedia/RTMP/include/librtmp",
+					"$(SRCROOT)/Runner/JASDK/JAODM",
+					"$(SRCROOT)/Runner/JASDK/JAODM/JAODMModel",
+					"$(SRCROOT)/Runner/JASDK/JAODM/JAODMModel/AddDeviceInfo",
+					"$(SRCROOT)/Runner/JASDK/JAODM/JAODMModel/Help",
+					"$(SRCROOT)/Runner/JASDK/JAODM/JAODMModel/JAODMAddDevice",
+					"$(SRCROOT)/Runner/JASDK/JAODM/JAODMModel/JAODMCloud",
+					"$(SRCROOT)/Runner/JASDK/JAODM/JAODMModel/JAODMDevicePlayer",
+					"$(SRCROOT)/Runner/JASDK/JAODM/JAODMModel/JAODMDevicesList",
+					"$(SRCROOT)/Runner/JASDK/JAODM/JAODMModel/JAODMGeneral",
+					"$(SRCROOT)/Runner/JASDK/JAODM/JAODMModel/JAODMLoginRegister",
+					"$(SRCROOT)/Runner/JASDK/JAODM/JAODMModel/JAODMPersonal",
+					"$(SRCROOT)/Runner/JASDK/JAResources",
+					"$(SRCROOT)/Runner/JASDK/JAResources/LanguagesString",
+					"$(SRCROOT)/Runner/JASDK/JAResources/XLanguage",
+					"$(SRCROOT)/Runner/JASDK/Third",
+					"$(SRCROOT)/Runner/JASDK/Third/Masonry",
+					"$(SRCROOT)/Runner/JASDK/Third/AFNetworking",
+					"$(SRCROOT)/Runner/JASDK/Third/AFNetworking/AFNetworking",
+					"$(SRCROOT)/Runner/JASDK/Third/AFNetworking/UIKit+AFNetworking",
+					"$(SRCROOT)/Runner/JASDK/Third/SDWebImage",
+					"$(SRCROOT)/Runner/JASDK/Third/SDWebImage/Core",
+					"$(SRCROOT)/Runner/JASDK/Third/SDWebImage/Private",
+					"$(SRCROOT)/Runner/JASDK/Third/SDWebImage/include",
+					"$(SRCROOT)/Runner/JASDK/Third/SDWebImage/include/SDWebImage",
+					"$(SRCROOT)/Runner/JASDK/Third/MJExtension",
+					"$(SRCROOT)/Runner/JASDK/Third/MBProgressHUD",
+				);
 				INFOPLIST_FILE = Runner/Info.plist;
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/Runner/JASDK",
+					"$(SRCROOT)/Runner/JASDK/JAMedia/ffmpeg",
+					"$(SRCROOT)/Runner/JASDK/JAMedia/ffmpeg/x264/lib",
+					"$(SRCROOT)/Runner/JASDK/JAMedia/JUAN/lib",
+					"$(SRCROOT)/Runner/JASDK/JAMedia/RTMP/lib",
+				);
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
+				);
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-ObjC",
+					"-dead_strip",
+					"-Wl,-ld_classic",
+					"-lz",
+					"-liconv",
+					"-lc++",
+					"-lbz2",
+					"-lJAJUANKit",
+					"-lavcodec",
+					"-lavformat",
+					"-lavutil",
+					"-lavdevice",
+					"-lavfilter",
+					"-lswresample",
+					"-lswscale",
+					"-lcrypto",
+					"-lssl",
+					"-lx264",
+					"-lEseeSDK",
+					"-lP2PSDKClient_static",
+					"-lIOTLink_static",
+					"-lFastUdx2",
+					"-ljnnat",
+					"-lIOTCAPIs_ALL",
+					"-lIOTCAPIs_ALLT",
+					"-lkdp_static",
+					"-larq_static",
+					"-lcurl",
+					"-lxml2",
+					"-ltinyxml",
+					"-lopencore-amrnb",
+					"-lrtmp",
+					"-framework CoreMotion",
+					"-framework AVFoundation",
+					"-framework VideoToolbox",
+					"-framework OpenGLES",
+					"-framework OpenAL",
+					"-framework AudioToolbox",
+					"-framework CoreMedia",
+					"-framework CoreVideo",
+					"-framework Security",
+					"-framework SystemConfiguration",
+					"-framework CFNetwork",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.gnb.godrejHome;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -678,10 +788,106 @@
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				DEVELOPMENT_TEAM = H3HPR8KNJB;
 				ENABLE_BITCODE = NO;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/Runner/JASDK/JAHeader",
+					"$(SRCROOT)/Runner/JASDK/JACategory",
+					"$(SRCROOT)/Runner/JASDK/JAMedia",
+					"$(SRCROOT)/Runner/JASDK/JAMedia/JUAN",
+					"$(SRCROOT)/Runner/JASDK/JAMedia/JUAN/include",
+					"$(SRCROOT)/Runner/JASDK/JAMedia/JUAN/include/curl",
+					"$(SRCROOT)/Runner/JASDK/JAMedia/ffmpeg",
+					"$(SRCROOT)/Runner/JASDK/JAMedia/ffmpeg/include",
+					"$(SRCROOT)/Runner/JASDK/JAMedia/ffmpeg/x264",
+					"$(SRCROOT)/Runner/JASDK/JAMedia/ffmpeg/x264/include",
+					"$(SRCROOT)/Runner/JASDK/JAMedia/RTMP",
+					"$(SRCROOT)/Runner/JASDK/JAMedia/RTMP/include",
+					"$(SRCROOT)/Runner/JASDK/JAMedia/RTMP/include/librtmp",
+					"$(SRCROOT)/Runner/JASDK/JAODM",
+					"$(SRCROOT)/Runner/JASDK/JAODM/JAODMModel",
+					"$(SRCROOT)/Runner/JASDK/JAODM/JAODMModel/AddDeviceInfo",
+					"$(SRCROOT)/Runner/JASDK/JAODM/JAODMModel/Help",
+					"$(SRCROOT)/Runner/JASDK/JAODM/JAODMModel/JAODMAddDevice",
+					"$(SRCROOT)/Runner/JASDK/JAODM/JAODMModel/JAODMCloud",
+					"$(SRCROOT)/Runner/JASDK/JAODM/JAODMModel/JAODMDevicePlayer",
+					"$(SRCROOT)/Runner/JASDK/JAODM/JAODMModel/JAODMDevicesList",
+					"$(SRCROOT)/Runner/JASDK/JAODM/JAODMModel/JAODMGeneral",
+					"$(SRCROOT)/Runner/JASDK/JAODM/JAODMModel/JAODMLoginRegister",
+					"$(SRCROOT)/Runner/JASDK/JAODM/JAODMModel/JAODMPersonal",
+					"$(SRCROOT)/Runner/JASDK/JAResources",
+					"$(SRCROOT)/Runner/JASDK/JAResources/LanguagesString",
+					"$(SRCROOT)/Runner/JASDK/JAResources/XLanguage",
+					"$(SRCROOT)/Runner/JASDK/Third",
+					"$(SRCROOT)/Runner/JASDK/Third/Masonry",
+					"$(SRCROOT)/Runner/JASDK/Third/AFNetworking",
+					"$(SRCROOT)/Runner/JASDK/Third/AFNetworking/AFNetworking",
+					"$(SRCROOT)/Runner/JASDK/Third/AFNetworking/UIKit+AFNetworking",
+					"$(SRCROOT)/Runner/JASDK/Third/SDWebImage",
+					"$(SRCROOT)/Runner/JASDK/Third/SDWebImage/Core",
+					"$(SRCROOT)/Runner/JASDK/Third/SDWebImage/Private",
+					"$(SRCROOT)/Runner/JASDK/Third/SDWebImage/include",
+					"$(SRCROOT)/Runner/JASDK/Third/SDWebImage/include/SDWebImage",
+					"$(SRCROOT)/Runner/JASDK/Third/MJExtension",
+					"$(SRCROOT)/Runner/JASDK/Third/MBProgressHUD",
+				);
 				INFOPLIST_FILE = Runner/Info.plist;
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/Runner/JASDK",
+					"$(SRCROOT)/Runner/JASDK/JAMedia/ffmpeg",
+					"$(SRCROOT)/Runner/JASDK/JAMedia/ffmpeg/x264/lib",
+					"$(SRCROOT)/Runner/JASDK/JAMedia/JUAN/lib",
+					"$(SRCROOT)/Runner/JASDK/JAMedia/RTMP/lib",
+				);
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
+				);
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-ObjC",
+					"-dead_strip",
+					"-Wl,-ld_classic",
+					"-lz",
+					"-liconv",
+					"-lc++",
+					"-lbz2",
+					"-lJAJUANKit",
+					"-lavcodec",
+					"-lavformat",
+					"-lavutil",
+					"-lavdevice",
+					"-lavfilter",
+					"-lswresample",
+					"-lswscale",
+					"-lcrypto",
+					"-lssl",
+					"-lx264",
+					"-lEseeSDK",
+					"-lP2PSDKClient_static",
+					"-lIOTLink_static",
+					"-lFastUdx2",
+					"-ljnnat",
+					"-lIOTCAPIs_ALL",
+					"-lIOTCAPIs_ALLT",
+					"-lkdp_static",
+					"-larq_static",
+					"-lcurl",
+					"-lxml2",
+					"-ltinyxml",
+					"-lopencore-amrnb",
+					"-lrtmp",
+					"-framework CoreMotion",
+					"-framework AVFoundation",
+					"-framework VideoToolbox",
+					"-framework OpenGLES",
+					"-framework OpenAL",
+					"-framework AudioToolbox",
+					"-framework CoreMedia",
+					"-framework CoreVideo",
+					"-framework Security",
+					"-framework SystemConfiguration",
+					"-framework CFNetwork",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.gnb.godrejHome;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -701,10 +907,106 @@
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				DEVELOPMENT_TEAM = H3HPR8KNJB;
 				ENABLE_BITCODE = NO;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/Runner/JASDK/JAHeader",
+					"$(SRCROOT)/Runner/JASDK/JACategory",
+					"$(SRCROOT)/Runner/JASDK/JAMedia",
+					"$(SRCROOT)/Runner/JASDK/JAMedia/JUAN",
+					"$(SRCROOT)/Runner/JASDK/JAMedia/JUAN/include",
+					"$(SRCROOT)/Runner/JASDK/JAMedia/JUAN/include/curl",
+					"$(SRCROOT)/Runner/JASDK/JAMedia/ffmpeg",
+					"$(SRCROOT)/Runner/JASDK/JAMedia/ffmpeg/include",
+					"$(SRCROOT)/Runner/JASDK/JAMedia/ffmpeg/x264",
+					"$(SRCROOT)/Runner/JASDK/JAMedia/ffmpeg/x264/include",
+					"$(SRCROOT)/Runner/JASDK/JAMedia/RTMP",
+					"$(SRCROOT)/Runner/JASDK/JAMedia/RTMP/include",
+					"$(SRCROOT)/Runner/JASDK/JAMedia/RTMP/include/librtmp",
+					"$(SRCROOT)/Runner/JASDK/JAODM",
+					"$(SRCROOT)/Runner/JASDK/JAODM/JAODMModel",
+					"$(SRCROOT)/Runner/JASDK/JAODM/JAODMModel/AddDeviceInfo",
+					"$(SRCROOT)/Runner/JASDK/JAODM/JAODMModel/Help",
+					"$(SRCROOT)/Runner/JASDK/JAODM/JAODMModel/JAODMAddDevice",
+					"$(SRCROOT)/Runner/JASDK/JAODM/JAODMModel/JAODMCloud",
+					"$(SRCROOT)/Runner/JASDK/JAODM/JAODMModel/JAODMDevicePlayer",
+					"$(SRCROOT)/Runner/JASDK/JAODM/JAODMModel/JAODMDevicesList",
+					"$(SRCROOT)/Runner/JASDK/JAODM/JAODMModel/JAODMGeneral",
+					"$(SRCROOT)/Runner/JASDK/JAODM/JAODMModel/JAODMLoginRegister",
+					"$(SRCROOT)/Runner/JASDK/JAODM/JAODMModel/JAODMPersonal",
+					"$(SRCROOT)/Runner/JASDK/JAResources",
+					"$(SRCROOT)/Runner/JASDK/JAResources/LanguagesString",
+					"$(SRCROOT)/Runner/JASDK/JAResources/XLanguage",
+					"$(SRCROOT)/Runner/JASDK/Third",
+					"$(SRCROOT)/Runner/JASDK/Third/Masonry",
+					"$(SRCROOT)/Runner/JASDK/Third/AFNetworking",
+					"$(SRCROOT)/Runner/JASDK/Third/AFNetworking/AFNetworking",
+					"$(SRCROOT)/Runner/JASDK/Third/AFNetworking/UIKit+AFNetworking",
+					"$(SRCROOT)/Runner/JASDK/Third/SDWebImage",
+					"$(SRCROOT)/Runner/JASDK/Third/SDWebImage/Core",
+					"$(SRCROOT)/Runner/JASDK/Third/SDWebImage/Private",
+					"$(SRCROOT)/Runner/JASDK/Third/SDWebImage/include",
+					"$(SRCROOT)/Runner/JASDK/Third/SDWebImage/include/SDWebImage",
+					"$(SRCROOT)/Runner/JASDK/Third/MJExtension",
+					"$(SRCROOT)/Runner/JASDK/Third/MBProgressHUD",
+				);
 				INFOPLIST_FILE = Runner/Info.plist;
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/Runner/JASDK",
+					"$(SRCROOT)/Runner/JASDK/JAMedia/ffmpeg",
+					"$(SRCROOT)/Runner/JASDK/JAMedia/ffmpeg/x264/lib",
+					"$(SRCROOT)/Runner/JASDK/JAMedia/JUAN/lib",
+					"$(SRCROOT)/Runner/JASDK/JAMedia/RTMP/lib",
+				);
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
+				);
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-ObjC",
+					"-dead_strip",
+					"-Wl,-ld_classic",
+					"-lz",
+					"-liconv",
+					"-lc++",
+					"-lbz2",
+					"-lJAJUANKit",
+					"-lavcodec",
+					"-lavformat",
+					"-lavutil",
+					"-lavdevice",
+					"-lavfilter",
+					"-lswresample",
+					"-lswscale",
+					"-lcrypto",
+					"-lssl",
+					"-lx264",
+					"-lEseeSDK",
+					"-lP2PSDKClient_static",
+					"-lIOTLink_static",
+					"-lFastUdx2",
+					"-ljnnat",
+					"-lIOTCAPIs_ALL",
+					"-lIOTCAPIs_ALLT",
+					"-lkdp_static",
+					"-larq_static",
+					"-lcurl",
+					"-lxml2",
+					"-ltinyxml",
+					"-lopencore-amrnb",
+					"-lrtmp",
+					"-framework CoreMotion",
+					"-framework AVFoundation",
+					"-framework VideoToolbox",
+					"-framework OpenGLES",
+					"-framework OpenAL",
+					"-framework AudioToolbox",
+					"-framework CoreMedia",
+					"-framework CoreVideo",
+					"-framework Security",
+					"-framework SystemConfiguration",
+					"-framework CFNetwork",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.gnb.godrejHome;
 				PRODUCT_NAME = "$(TARGET_NAME)";

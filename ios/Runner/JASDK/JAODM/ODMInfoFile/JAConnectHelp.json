@@ -1,0 +1,119 @@
+{
+	"Helps": [
+        {
+            "HelpType": 0,
+            "SeparatorStyle": 1,
+            "Rows": [
+                [{
+                    "TextSize": "17",
+                    "TextColor": "#333333",
+                    "Type": 0,
+                    "Blod": false,
+                    "Value": "adddevice_check_device"
+                }, {
+                    "TextSize": "14",
+                    "TextColor": "#333333",
+                    "Type": 0,
+                    "Blod": false,
+                    "Value": "adddevice_check_device_prompt"
+                }, {
+                    "TextSize": "17",
+                    "TextColor": "#333333",
+                    "Type": 0,
+                    "Blod": false,
+                    "Value": "adddevice_distance_requir"
+                },
+                {
+                    "TextSize": "14",
+                    "TextColor": "#333333",
+                    "Type": 0,
+                    "Blod": false,
+                    "Value": "adddevice_distance_requir_prompt"
+                },
+                {
+                    "TextSize": "17",
+                    "TextColor": "#333333",
+                    "Type": 0,
+                    "Blod": false,
+                    "Value": "adddevice_distance_requidistance_network_require"
+                }, {
+                    "TextSize": "14",
+                    "TextColor": "#333333",
+                    "Type": 0,
+                    "Blod": false,
+                    "Value": "adddevice_distance_requidistance_network_require_prompt"
+                }, {
+                    "TextSize": "17",
+                    "TextColor": "#333333",
+                    "Type": 0,
+                    "Blod": false,
+                    "Value": "adddevice_environmental_requir"
+                },
+                {
+                    "TextSize": "14",
+                    "TextColor": "#333333",
+                    "Type": 0,
+                    "Blod": false,
+                    "Value": "adddevice_environmental_requir_detail"
+                }
+                ]
+            ],
+            "Name": "adddevice_add_configuration_help"
+        },
+    {
+		"HelpType": 0,
+		"SeparatorStyle": 1,
+		"Rows": [
+			[{
+				"TextSize": "17",
+				"TextColor": "#333333",
+				"Type": 0,
+				"Blod": false,
+				"Value": "adddevice_open_wifi_assistant"
+			}, {
+				"TextSize": "14",
+				"TextColor": "#333333",
+				"Type": 0,
+				"Blod": false,
+                "Value": "adddevice_open_wifi_assistant_detail"
+			}, {
+				"TextSize": "17",
+				"TextColor": "#333333",
+				"Type": 0,
+				"Blod": false,
+				"Value": "adddevice_signal_unstable"
+            }, {
+                "TextSize": "14",
+                "TextColor": "#333333",
+                "Type": 0,
+                "Blod": false,
+                "Value": "adddevice_signal_unstable_detail"
+            }, {
+                "TextSize": "17",
+                "TextColor": "#333333",
+                "Type": 0,
+                "Blod": false,
+                "Value": "adddevice_network_error"
+            }, {
+                "TextSize": "14",
+                "TextColor": "#333333",
+                "Type": 0,
+                "Blod": false,
+                "Value": "adddevice_network_error_detail"
+            }, {
+                "TextSize": "17",
+                "TextColor": "#333333",
+                "Type": 0,
+                "Blod": false,
+                "Value": "adddevice_open_4G"
+            }, {
+                "TextSize": "14",
+                "TextColor": "#333333",
+                "Type": 0,
+                "Blod": false,
+                "Value": "adddevice_open_4G_detail"
+            }]
+		],
+		"Name": "adddevice_connect_fail_reason_3"
+	}]
+}

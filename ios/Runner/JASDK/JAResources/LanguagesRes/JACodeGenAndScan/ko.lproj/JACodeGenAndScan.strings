@@ -1,0 +1,14 @@
+"addDevice_share_overdue" = "시간이 만료되었습니다."; 
+"addDevice_share_vailidTime" = "유효시간"; 
+"plural_ios" = "%ld 초"; 
+"adddevice_add_manully" = "수동으로 추가"; 
+"text_ID" = "신분증"; 
+"addDevice_scan_putInFrame" = "사각형 안에 QR 코드를 맞춰주세요."; 
+"setting_phone_open_camera" = "휴대폰의 설정-애플리케이션 관리-IP Pro 앱 선택-\"권한\"-\"카메라\"에서 사용 권한을 허용으로 해 주세요."; 
+"share" = "공유"; 
+"photo_album" = "앨범"; 
+"cancel" = "취소"; 
+"confirm" = "결정"; 
+"addDevice_point" = "토브넷 장치 QR 코드 또는 바코드를 스마트폰 스캔틀에 맞추어주세요."; 
+"setting_phone_selectAndWrite_options" = "휴대폰의 설정-애플리케이션 관리-IP Pro 앱 선택-\"권한\"-\"저장공간\" 사용 권한을 허용으로 해주세요."; 
+"competence_lack" = "권한 없음"; 
