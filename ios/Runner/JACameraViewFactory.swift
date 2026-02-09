@@ -142,6 +142,40 @@ class JACameraView: NSObject, FlutterPlatformView {
     private func performSdkSetup() {
         print("[JACameraView-Native] *** performSdkSetup started ***")
         
+        // DEBUG: Verify bundle resources before SDK initialization
+        print("[JACameraView-Native] *** Bundle Resource Verification ***")
+        let bundle = Bundle.main
+        print("[JACameraView-Native] Main bundle path: \(bundle.bundlePath)")
+        
+        // Check for General.json
+        if let generalPath = bundle.path(forResource: "General", ofType: "json") {
+            print("[JACameraView-Native] ✓ General.json FOUND at: \(generalPath)")
+        } else {
+            print("[JACameraView-Native] ✗ General.json NOT FOUND in main bundle!")
+        }
+        
+        // Check for other critical files
+        let criticalFiles = ["Cloud", "AddDevice", "PreviewPlayback", "JAHelp"]
+        for file in criticalFiles {
+            if let path = bundle.path(forResource: file, ofType: "json") {
+                print("[JACameraView-Native] ✓ \(file).json FOUND")
+            } else {
+                print("[JACameraView-Native] ✗ \(file).json NOT FOUND")
+            }
+        }
+        
+        // List all JSON files in bundle (for debugging)
+        if let resourcePath = bundle.resourcePath {
+            do {
+                let files = try FileManager.default.contentsOfDirectory(atPath: resourcePath)
+                let jsonFiles = files.filter { $0.hasSuffix(".json") }
+                print("[JACameraView-Native] JSON files in bundle root: \(jsonFiles)")
+            } catch {
+                print("[JACameraView-Native] Error listing bundle contents: \(error)")
+            }
+        }
+        print("[JACameraView-Native] *** End Bundle Verification ***")
+        
         // Create the preview view controller directly
         print("[JACameraView-Native] Creating JAPreviewMultipleViewController...")
         previewVC = JAPreviewMultipleViewController()
