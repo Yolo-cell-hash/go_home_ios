@@ -1,6 +1,6 @@
 // vertical_home/camera_screen.dart
-// CCTV Camera control screen with live video feed and PTZ controls
-// Responsive layout for iPhone testing, optimized for iPad production
+// CCTV Camera control screen with live video feed
+// Uses SDK's built-in PTZ controls
 
 import 'dart:async';
 import 'dart:io';
@@ -8,7 +8,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:godrej_home/widgets/navbar_setup.dart';
 import 'package:godrej_home/widgets/ja_camera_view.dart';
-import 'package:godrej_home/widgets/ptz_controller.dart';
 import 'package:godrej_home/services/ja_camera_service.dart';
 
 /// CCTV Camera control screen with live video feed
@@ -30,8 +29,6 @@ class _CameraScreenState extends State<CameraScreen> {
   // State
   bool _isLoading = true;
   bool _isConnected = false;
-  bool _showPTZ = false;
-  bool _isRecording = true;
   String? _errorMessage;
   StreamSubscription? _eventSubscription;
 
@@ -123,167 +120,137 @@ class _CameraScreenState extends State<CameraScreen> {
     });
   }
 
-  Future<void> _handleCapture() async {
-    print('[CameraScreen] Capture button pressed');
-    final path = await JACameraService.capture();
-    final success = path != null;
-    print('[CameraScreen] Capture result: $success, path: $path');
-
-    if (mounted) {
-      showCupertinoDialog(
-        context: context,
-        builder: (context) => CupertinoAlertDialog(
-          title: Text(success ? 'Screenshot Saved' : 'Capture Failed'),
+  void _showConnectionFailedAlert() {
+    showCupertinoDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return CupertinoAlertDialog(
+          title: const Text('Connection Failed'),
           content: Text(
-            success
-                ? 'Screenshot has been saved to your device.'
-                : 'Failed to capture screenshot.',
+            _errorMessage ??
+                'Unable to connect to camera. Please check your network connection and try again.',
           ),
           actions: [
             CupertinoDialogAction(
-              child: const Text('OK'),
-              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+              onPressed: () {
+                Navigator.of(context).pop();
+                Navigator.of(context).pop(); // Go back to previous screen
+              },
+            ),
+            CupertinoDialogAction(
+              isDefaultAction: true,
+              child: const Text('Retry'),
+              onPressed: () {
+                Navigator.of(context).pop();
+                _initializeCamera();
+              },
             ),
           ],
-        ),
-      );
-    }
+        );
+      },
+    );
   }
 
-  // Check if we're on a small screen (iPhone)
-  bool _isSmallScreen(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-    final isSmall = size.shortestSide < 600;
-    print(
-      '[CameraScreen] isSmallScreen: $isSmall (shortestSide: ${size.shortestSide})',
+  void _showInfoAlert(String title, String message) {
+    showCupertinoDialog(
+      context: context,
+      builder: (context) => CupertinoAlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          CupertinoDialogAction(
+            child: const Text('OK'),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+        ],
+      ),
     );
-    return isSmall;
   }
 
   @override
   Widget build(BuildContext context) {
     final primaryColor = CupertinoTheme.of(context).primaryColor;
     final theme = CupertinoTheme.of(context);
-    final isSmallScreen = _isSmallScreen(context);
-    final screenSize = MediaQuery.of(context).size;
-
-    print(
-      '[CameraScreen] build called - isSmallScreen: $isSmallScreen, size: $screenSize',
-    );
 
     return CupertinoPageScaffold(
       backgroundColor: CupertinoColors.systemBackground,
-      child: SafeArea(
-        child: Column(
-          children: [
-            // Use existing NavbarSetup widget
-            NavbarSetup(theme: theme, imgPath: 'camera', label: 'CCTV Camera'),
-
-            // Main content area - responsive layout
-            Expanded(
-              child: isSmallScreen
-                  ? _buildPhoneLayout(primaryColor, screenSize)
-                  : _buildTabletLayout(primaryColor),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// Phone layout - vertical stacking with fixed camera height
-  Widget _buildPhoneLayout(Color primaryColor, Size screenSize) {
-    // Calculate camera height to ensure controls fit
-    final availableHeight =
-        screenSize.height - 200; // Account for navbar and safe areas
-    final cameraHeight = (availableHeight * 0.6).clamp(200.0, 400.0);
-
-    print('[CameraScreen] Phone layout - cameraHeight: $cameraHeight');
-
-    return Padding(
-      padding: const EdgeInsets.all(16),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Title with icon
-          _buildTitle(primaryColor),
-          const SizedBox(height: 12),
+          // Use existing NavbarSetup widget
+          NavbarSetup(theme: theme, imgPath: 'camera', label: 'CCTV Camera'),
 
-          // Camera feed with fixed height
-          SizedBox(
-            height: cameraHeight,
-            child: _buildVideoFeedSection(primaryColor),
-          ),
-          const SizedBox(height: 16),
-
-          // Control buttons - horizontal row for phone
-          Expanded(child: _buildPhoneControlPanel(primaryColor)),
-        ],
-      ),
-    );
-  }
-
-  /// Tablet (iPad) layout - horizontal side by side
-  Widget _buildTabletLayout(Color primaryColor) {
-    return Container(
-      padding: const EdgeInsets.only(
-        left: 60.0,
-        top: 30.0,
-        bottom: 30.0,
-        right: 0.0,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Title with icon
-          _buildTitle(primaryColor),
-          const SizedBox(height: 30),
-
-          // Main content row
+          // Main content area
           Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Left section: Camera feed
-                Expanded(flex: 5, child: _buildVideoFeedSection(primaryColor)),
-                const SizedBox(width: 30),
+            child: Container(
+              color: CupertinoColors.systemBackground,
+              padding: const EdgeInsets.only(
+                left: 60.0,
+                right: 0.0,
+                top: 30.0,
+                bottom: 30.0,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Title with icon - "CCTV"
+                  Row(
+                    children: [
+                      Container(
+                        width: 50,
+                        height: 50,
+                        decoration: BoxDecoration(
+                          color: primaryColor,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: Image.asset(
+                            'images/small_cctv.png',
+                            width: 28,
+                            height: 28,
+                            fit: BoxFit.contain,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 15),
+                      const Text(
+                        'CCTV',
+                        style: TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.w600,
+                          color: CupertinoColors.black,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 30),
 
-                // Right section: Control buttons
-                Expanded(flex: 3, child: _buildControlPanel(primaryColor)),
-              ],
+                  // Main content row
+                  Expanded(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Left section: Video feed
+                        Expanded(
+                          flex: 5,
+                          child: _buildVideoFeedSection(primaryColor),
+                        ),
+                        const SizedBox(width: 30),
+
+                        // Right section: Control buttons
+                        Expanded(
+                          flex: 3,
+                          child: _buildControlsSection(primaryColor),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildTitle(Color primaryColor) {
-    return Row(
-      children: [
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: primaryColor,
-            shape: BoxShape.circle,
-          ),
-          child: Image.asset(
-            'images/small_cctv.png',
-            height: 24.0,
-            width: 24.0,
-          ),
-        ),
-        const SizedBox(width: 12),
-        const Text(
-          'CCTV',
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.w600,
-            color: CupertinoColors.black,
-          ),
-        ),
-      ],
     );
   }
 
@@ -291,96 +258,57 @@ class _CameraScreenState extends State<CameraScreen> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.black,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.2),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         child: Stack(
           children: [
-            // Video feed or placeholder
+            // Video feed
             Positioned.fill(child: _buildVideoContent()),
 
-            // Recording indicator
-            Positioned(
-              top: 10,
-              right: 10,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.5),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 6,
-                      height: 6,
-                      decoration: BoxDecoration(
-                        color: _isRecording && _isConnected
-                            ? Colors.red
-                            : Colors.grey,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      _isConnected ? 'Live' : 'Offline',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            // PTZ overlay - PTZController handles PTZ internally via JACameraService
-            if (_showPTZ && _isConnected)
-              Positioned(
-                right: 10,
-                bottom: 10,
-                child: PTZController(
-                  size: 100,
-                  backgroundColor: Colors.black.withOpacity(0.5),
-                  buttonColor: Colors.white24,
-                  activeButtonColor: primaryColor,
-                  iconColor: Colors.white,
-                ),
-              ),
-
-            // PTZ toggle button
+            // Live indicator (when connected)
             if (_isConnected)
               Positioned(
-                left: 10,
-                bottom: 10,
-                child: GestureDetector(
-                  onTap: () {
-                    print('[CameraScreen] PTZ toggle pressed');
-                    setState(() => _showPTZ = !_showPTZ);
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: _showPTZ
-                          ? primaryColor
-                          : Colors.black.withOpacity(0.5),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(
-                      Icons.control_camera,
-                      color: Colors.white,
-                      size: 18,
-                    ),
+                top: 20,
+                right: 20,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 10,
+                        height: 10,
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'LIVE',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -391,23 +319,18 @@ class _CameraScreenState extends State<CameraScreen> {
   }
 
   Widget _buildVideoContent() {
-    print(
-      '[CameraScreen] _buildVideoContent - isLoading: $_isLoading, errorMessage: $_errorMessage',
-    );
-
     if (_isLoading) {
       return Container(
-        color: Colors.black,
+        color: const Color(0xFF2C2C2C),
         child: const Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
             children: [
-              CupertinoActivityIndicator(color: Colors.white, radius: 14),
-              SizedBox(height: 10),
+              CupertinoActivityIndicator(radius: 20, color: Colors.white),
+              SizedBox(height: 20),
               Text(
-                'Connecting to camera...',
-                style: TextStyle(color: Colors.white70, fontSize: 12),
+                'Connecting to Camera...',
+                style: TextStyle(color: Colors.grey, fontSize: 16),
               ),
             ],
           ),
@@ -417,55 +340,33 @@ class _CameraScreenState extends State<CameraScreen> {
 
     if (_errorMessage != null) {
       return Container(
-        color: Colors.black,
+        color: const Color(0xFF2C2C2C),
         child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  CupertinoIcons.exclamationmark_triangle,
-                  color: Colors.orange,
-                  size: 32,
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Connection Failed',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  _errorMessage!,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.white54, fontSize: 10),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 12),
-                CupertinoButton(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 8,
-                  ),
-                  color: CupertinoTheme.of(context).primaryColor,
-                  minSize: 30,
-                  onPressed: _initializeCamera,
-                  child: const Text('Retry', style: TextStyle(fontSize: 12)),
-                ),
-              ],
-            ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                CupertinoIcons.wifi_slash,
+                size: 60,
+                color: Colors.grey[600],
+              ),
+              const SizedBox(height: 15),
+              Text(
+                'Connection Failed',
+                style: TextStyle(color: Colors.grey[400], fontSize: 18),
+              ),
+              const SizedBox(height: 10),
+              CupertinoButton(
+                onPressed: _initializeCamera,
+                child: const Text('Retry'),
+              ),
+            ],
           ),
         ),
       );
     }
 
-    // Show native camera view on iOS
+    // Show native camera view on iOS - SDK handles PTZ internally
     if (Platform.isIOS) {
       print('[CameraScreen] Rendering JACameraView widget');
       return JACameraView(
@@ -480,177 +381,83 @@ class _CameraScreenState extends State<CameraScreen> {
           );
         },
       );
-    } else {
-      // Fallback for non-iOS platforms
-      return Container(
-        color: Colors.black,
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                CupertinoIcons.camera_fill,
-                size: 48,
-                color: Colors.grey[500],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Camera feed available on iOS only',
-                style: TextStyle(color: Colors.grey[600], fontSize: 12),
-              ),
-            ],
-          ),
-        ),
-      );
     }
-  }
 
-  /// Phone control panel - horizontal layout
-  Widget _buildPhoneControlPanel(Color primaryColor) {
-    return Center(
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          _buildCompactButton(
-            imagePath: 'images/privacy_mode.png',
-            label: 'Capture',
-            primaryColor: primaryColor,
-            onTap: _handleCapture,
-          ),
-          _buildCompactButton(
-            icon: CupertinoIcons.videocam_fill,
-            label: 'Record',
-            primaryColor: primaryColor,
-            onTap: () {
-              print('[CameraScreen] Record button pressed');
-              setState(() => _isRecording = !_isRecording);
-            },
-          ),
-          _buildCompactButton(
-            icon: CupertinoIcons.camera_fill,
-            label: 'PTZ',
-            primaryColor: primaryColor,
-            onTap: () {
-              print('[CameraScreen] PTZ button pressed');
-              setState(() => _showPTZ = !_showPTZ);
-            },
-          ),
-          _buildCompactButton(
-            imagePath: 'images/activity_trail.png',
-            label: 'Activity',
-            primaryColor: primaryColor,
-            onTap: () {
-              print('[CameraScreen] Activity button pressed');
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Compact button for phone layout
-  Widget _buildCompactButton({
-    IconData? icon,
-    String? imagePath,
-    required String label,
-    required Color primaryColor,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: primaryColor,
-              shape: BoxShape.circle,
-            ),
-            child: imagePath != null
-                ? Padding(
-                    padding: const EdgeInsets.all(10.0),
-                    child: Image.asset(imagePath, color: Colors.white),
-                  )
-                : Icon(icon, color: Colors.white, size: 20),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 10,
-              color: primaryColor,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// iPad control panel - vertical layout
-  Widget _buildControlPanel(Color primaryColor) {
-    return Center(
-      child: Container(
-        height: 400.0,
-        decoration: BoxDecoration(
-          color: const Color(0xFFF5F0EB),
-          borderRadius: BorderRadius.circular(25),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 50),
+    return Container(
+      color: const Color(0xFF2C2C2C),
+      child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // First row: Capture & Record
-            Expanded(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _buildElegantButton(
-                    imagePath: 'images/privacy_mode.png',
-                    label: 'Capture',
-                    primaryColor: primaryColor,
-                    onTap: _handleCapture,
-                  ),
-                  _buildElegantButton(
-                    icon: CupertinoIcons.videocam_fill,
-                    label: 'Record',
-                    primaryColor: primaryColor,
-                    onTap: () {
-                      print('[CameraScreen] Record button pressed (iPad)');
-                      setState(() {
-                        _isRecording = !_isRecording;
-                      });
-                    },
-                  ),
-                ],
-              ),
+            Image.asset(
+              'images/small_cctv.png',
+              width: 28,
+              height: 28,
+              fit: BoxFit.contain,
             ),
+            const SizedBox(height: 15),
+            Text(
+              'No Video Feed',
+              style: TextStyle(color: Colors.grey[500], fontSize: 18),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-            // Second row: Feed & Activity Trail
+  Widget _buildControlsSection(Color primaryColor) {
+    return Align(
+      alignment: Alignment.centerRight,
+      child: Container(
+        height: 400.0,
+        decoration: const BoxDecoration(
+          color: Color(0xFFF5F0EB),
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(25),
+            bottomLeft: Radius.circular(25),
+          ),
+        ),
+        padding: const EdgeInsets.only(
+          left: 20,
+          top: 50,
+          bottom: 50.0,
+          right: 0,
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Single row: Watch Video & PTZ Control
             Expanded(
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   _buildElegantButton(
                     icon: CupertinoIcons.camera_fill,
-                    label: 'Feed',
+                    label: 'Watch\nVideo',
                     primaryColor: primaryColor,
+                    isEnabled: true,
                     onTap: () {
-                      print('[CameraScreen] Feed/PTZ button pressed (iPad)');
-                      setState(() => _showPTZ = !_showPTZ);
+                      // Resume feed if paused
+                      if (!_isConnected) {
+                        _initializeCamera();
+                      } else {
+                        _showInfoAlert(
+                          'Live Feed',
+                          'Camera feed is currently active.',
+                        );
+                      }
                     },
                   ),
                   _buildElegantButton(
-                    imagePath: 'images/activity_trail.png',
-                    label: 'Activity Trail',
+                    icon: Icons.control_camera,
+                    label: 'PTZ\nControl',
                     primaryColor: primaryColor,
+                    isEnabled: _isConnected,
                     onTap: () {
-                      print(
-                        '[CameraScreen] Activity Trail button pressed (iPad)',
+                      _showInfoAlert(
+                        'PTZ Control',
+                        'Use the on-screen controls in the video feed to pan, tilt, and zoom the camera.\n\nThe SDK provides built-in PTZ controls.',
                       );
                     },
                   ),
@@ -669,37 +476,48 @@ class _CameraScreenState extends State<CameraScreen> {
     required String label,
     required Color primaryColor,
     required VoidCallback onTap,
+    bool isLoading = false,
+    bool isEnabled = true,
   }) {
+    final effectiveColor = isEnabled
+        ? primaryColor
+        : CupertinoColors.systemGrey3;
+
     return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 70,
-            height: 70,
-            decoration: BoxDecoration(
-              color: primaryColor,
-              shape: BoxShape.circle,
+      onTap: isEnabled ? onTap : null,
+      child: Opacity(
+        opacity: isEnabled ? 1.0 : 0.5,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 70,
+              height: 70,
+              decoration: BoxDecoration(
+                color: effectiveColor,
+                shape: BoxShape.circle,
+              ),
+              child: isLoading
+                  ? const CupertinoActivityIndicator(color: Colors.white)
+                  : (imagePath != null
+                        ? Padding(
+                            padding: const EdgeInsets.all(18.0),
+                            child: Image.asset(imagePath, color: Colors.white),
+                          )
+                        : Icon(icon, color: Colors.white, size: 32)),
             ),
-            child: imagePath != null
-                ? Padding(
-                    padding: const EdgeInsets.all(18.0),
-                    child: Image.asset(imagePath, color: Colors.white),
-                  )
-                : Icon(icon, color: Colors.white, size: 32),
-          ),
-          const SizedBox(height: 15),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 16,
-              color: primaryColor,
-              fontWeight: FontWeight.w500,
+            const SizedBox(height: 15),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 16,
+                color: effectiveColor,
+                fontWeight: FontWeight.w500,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
