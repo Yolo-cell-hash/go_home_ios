@@ -20,6 +20,7 @@ import 'vertical_home/camera_screen.dart';
 import 'vertical_home/bed_storage_screen.dart';
 import 'vertical_home/wardrobe_screen.dart';
 import 'vertical_home/light_control_screen.dart';
+import 'vertical_home/fan_control_screen.dart';
 
 /// Main vertical home screen with snap scrolling pages
 class VerticalHomeScreen extends StatefulWidget {
@@ -874,6 +875,9 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
       case 3: // Light (active)
         targetScreen = const LightControlScreen();
         break;
+      case 5: // Fan
+        targetScreen = const FanControlScreen();
+        break;
       default:
         print('[DEBUG] No long press navigation for living room index: $index');
         return;
@@ -896,6 +900,9 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
     Widget? targetScreen;
 
     switch (index) {
+      case 3: // Fan
+        targetScreen = const FanControlScreen();
+        break;
       case 5: // Light (active)
         targetScreen = const LightControlScreen();
         break;
