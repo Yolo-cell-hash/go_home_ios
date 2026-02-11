@@ -15,6 +15,7 @@ class LightControlScreen extends StatefulWidget {
 
 class _LightControlScreenState extends State<LightControlScreen> {
   bool isLightOn = false;
+  bool isPartyOn = false;
   double brightness = 0.75;
   Color selectedColor = const Color(0xFFFFEB3B); // Default yellow
   bool _isLoading = true;
@@ -28,6 +29,10 @@ class _LightControlScreenState extends State<LightControlScreen> {
   StreamSubscription<DatabaseEvent>? _lightSubscription;
   StreamSubscription<DatabaseEvent>? _hexSubscription;
   StreamSubscription<DatabaseEvent>? _intensitySubscription;
+  StreamSubscription<DatabaseEvent>? _partySubscription;
+
+  // Throttle timer for continuous color picker writes
+  Timer? _colorWriteThrottle;
 
   // Position of color indicator on wheel (relative to center)
   Offset _indicatorPosition = const Offset(-70, 30);
@@ -51,6 +56,8 @@ class _LightControlScreenState extends State<LightControlScreen> {
     _lightSubscription?.cancel();
     _hexSubscription?.cancel();
     _intensitySubscription?.cancel();
+    _partySubscription?.cancel();
+    _colorWriteThrottle?.cancel();
     super.dispose();
   }
 
@@ -91,6 +98,16 @@ class _LightControlScreenState extends State<LightControlScreen> {
             '[DEBUG] LightControlScreen: Intensity = $intValue (brightness = $brightness)',
           );
         }
+      }
+
+      // Fetch party state
+      final partySnapshot = await _dbRef.child('party').get();
+      if (partySnapshot.exists) {
+        final partyValue = partySnapshot.value as bool?;
+        setState(() {
+          isPartyOn = partyValue ?? false;
+        });
+        print('[DEBUG] LightControlScreen: Party state = $isPartyOn');
       }
 
       setState(() {
@@ -155,6 +172,21 @@ class _LightControlScreenState extends State<LightControlScreen> {
         }
       }
     });
+
+    // Listen to party state changes
+    _partySubscription = _dbRef.child('party').onValue.listen((event) {
+      if (event.snapshot.exists) {
+        final partyValue = event.snapshot.value as bool?;
+        if (mounted && partyValue != null && partyValue != isPartyOn) {
+          setState(() {
+            isPartyOn = partyValue;
+          });
+          print(
+            '[DEBUG] LightControlScreen: Party state updated to $isPartyOn',
+          );
+        }
+      }
+    });
   }
 
   /// Update light toggle state in Firebase
@@ -165,6 +197,26 @@ class _LightControlScreenState extends State<LightControlScreen> {
     } catch (e) {
       print('[ERROR] LightControlScreen: Failed to update light state: $e');
     }
+  }
+
+  /// Update party state in Firebase
+  Future<void> _updatePartyState(bool value) async {
+    try {
+      await _dbRef.child('party').set(value);
+      print('[DEBUG] LightControlScreen: Updated Firebase party = $value');
+    } catch (e) {
+      print('[ERROR] LightControlScreen: Failed to update party state: $e');
+    }
+  }
+
+  /// Toggle party mode
+  void _toggleParty() {
+    if (!isLightOn) return;
+    final newState = !isPartyOn;
+    setState(() {
+      isPartyOn = newState;
+    });
+    _updatePartyState(newState);
   }
 
   /// Update RGB color value in Firebase (format: "r,g,b")
@@ -455,21 +507,14 @@ class _LightControlScreenState extends State<LightControlScreen> {
                                             ],
                                           ),
                                         ),
-                                        // Second row: Dim (centered)
+                                        // Second row: Party (centered)
                                         Expanded(
                                           child: Row(
                                             mainAxisAlignment:
                                                 MainAxisAlignment.center,
                                             children: [
-                                              _buildElegantButton(
-                                                icon: CupertinoIcons.drop_fill,
-                                                label: 'Dim',
+                                              _buildPartyButton(
                                                 primaryColor: primaryColor,
-                                                onTap: () {
-                                                  setState(() {
-                                                    brightness = 0.3;
-                                                  });
-                                                },
                                               ),
                                             ],
                                           ),
@@ -594,22 +639,30 @@ class _LightControlScreenState extends State<LightControlScreen> {
       onPanUpdate: isLightOn
           ? (details) {
               _updateColorFromPosition(details.localPosition, wheelRadius);
+              // Continuously write to Firebase while dragging (throttled)
+              _colorWriteThrottle?.cancel();
+              _colorWriteThrottle = Timer(
+                const Duration(milliseconds: 50),
+                () => _updateRgbColor(selectedColor),
+              );
             }
           : null,
       onPanEnd: isLightOn
           ? (_) {
-              // Write to Firebase when user finishes dragging
+              // Ensure final value is written on release
+              _colorWriteThrottle?.cancel();
               _updateRgbColor(selectedColor);
             }
           : null,
       onTapDown: isLightOn
           ? (details) {
               _updateColorFromPosition(details.localPosition, wheelRadius);
+              _updateRgbColor(selectedColor);
             }
           : null,
       onTapUp: isLightOn
           ? (_) {
-              // Write to Firebase when user taps
+              // Final write on tap release
               _updateRgbColor(selectedColor);
             }
           : null,
@@ -805,6 +858,68 @@ class _LightControlScreenState extends State<LightControlScreen> {
             style: TextStyle(
               fontSize: 16,
               color: isLightOn ? primaryColor : Colors.grey,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Builds the Party toggle button with active/inactive visual states
+  Widget _buildPartyButton({required Color primaryColor}) {
+    final bool enabled = isLightOn;
+    final bool active = isPartyOn && enabled;
+
+    return GestureDetector(
+      onTap: enabled ? _toggleParty : null,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeInOut,
+            width: 70,
+            height: 70,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: active
+                  ? const LinearGradient(
+                      colors: [
+                        Color(0xFFE040FB),
+                        Color(0xFF7C4DFF),
+                        Color(0xFF448AFF),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    )
+                  : null,
+              color: active ? null : (enabled ? primaryColor : Colors.grey),
+              boxShadow: active
+                  ? [
+                      BoxShadow(
+                        color: const Color(0xFFE040FB).withOpacity(0.45),
+                        blurRadius: 16,
+                        spreadRadius: 2,
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Icon(
+              CupertinoIcons.music_note_2,
+              color: Colors.white,
+              size: 32,
+            ),
+          ),
+          const SizedBox(height: 15),
+          Text(
+            'Party',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 16,
+              color: active
+                  ? const Color(0xFFE040FB)
+                  : (enabled ? primaryColor : Colors.grey),
               fontWeight: FontWeight.w500,
             ),
           ),
