@@ -3,10 +3,8 @@
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:godrej_home/widgets/navbar_setup.dart';
-import 'package:godrej_home/utils/web_api.dart';
-import 'package:godrej_home/utils/app_state.dart';
-import 'package:provider/provider.dart';
 import 'dart:math' as math;
 
 /// Door lock control screen
@@ -24,14 +22,10 @@ class _DoorLockScreenState extends State<DoorLockScreen> {
   double batteryLevel = 0.75; // 75% battery
   bool isUnlocking = false; // Loading state for unlock operation
 
-  // WebApi instance
-  final WebApi _webApi = WebApi();
-
-  // Controllers for API menu
-  final TextEditingController _phoneController = TextEditingController(
-    text: '8806435774',
+  // Firebase database reference
+  final DatabaseReference _dbRef = FirebaseDatabase.instance.ref(
+    'automation-flags',
   );
-  final TextEditingController _otpController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
@@ -86,15 +80,12 @@ class _DoorLockScreenState extends State<DoorLockScreen> {
                       ),
 
                       SizedBox(width: 15),
-                      GestureDetector(
-                        onDoubleTap: () => _showApiMenu(context, primaryColor),
-                        child: Text(
-                          'Door Lock - Advantis IoT 9',
-                          style: TextStyle(
-                            fontSize: 26,
-                            fontWeight: FontWeight.w600,
-                            color: CupertinoColors.black,
-                          ),
+                      Text(
+                        'Door Lock - Advantis IoT 9',
+                        style: TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.w600,
+                          color: CupertinoColors.black,
                         ),
                       ),
                     ],
@@ -180,7 +171,7 @@ class _DoorLockScreenState extends State<DoorLockScreen> {
                                       children: [
                                         // Large circular lock button
                                         GestureDetector(
-                                          onTap: () => _unlockViaApi(),
+                                          onTap: () => _toggleUnlock(),
                                           child: Container(
                                             width: 180,
                                             height: 180,
@@ -469,256 +460,10 @@ class _DoorLockScreenState extends State<DoorLockScreen> {
     );
   }
 
-  // Hidden API menu - accessible via double-tap on title
-  void _showApiMenu(BuildContext context, Color primaryColor) {
-    showCupertinoModalPopup(
-      context: context,
-      builder: (BuildContext dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            final appState = Provider.of<AppState>(context, listen: false);
-            final bool hasAccessToken = appState.accessToken.isNotEmpty;
-            final bool hasLockId = appState.lockID.isNotEmpty;
-
-            return Container(
-              height: MediaQuery.of(context).size.height * 0.7,
-              decoration: BoxDecoration(
-                color: CupertinoColors.systemBackground.resolveFrom(context),
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(25),
-                  topRight: Radius.circular(25),
-                ),
-              ),
-              child: Column(
-                children: [
-                  // Handle bar
-                  Container(
-                    margin: EdgeInsets.only(top: 12),
-                    width: 40,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: CupertinoColors.systemGrey3,
-                      borderRadius: BorderRadius.circular(2.5),
-                    ),
-                  ),
-                  SizedBox(height: 20),
-
-                  // Title
-                  Text(
-                    'Lock API Configuration',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: primaryColor,
-                    ),
-                  ),
-                  SizedBox(height: 20),
-
-                  Expanded(
-                    child: SingleChildScrollView(
-                      padding: EdgeInsets.symmetric(horizontal: 20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          // Status indicators
-                          Container(
-                            padding: EdgeInsets.all(15),
-                            decoration: BoxDecoration(
-                              color: CupertinoColors.systemGrey6,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Column(
-                              children: [
-                                _buildStatusRow('Access Token', hasAccessToken),
-                                SizedBox(height: 8),
-                                _buildStatusRow('Lock ID', hasLockId),
-                              ],
-                            ),
-                          ),
-                          SizedBox(height: 25),
-
-                          // Phone number input
-                          Text(
-                            'Phone Number',
-                            style: TextStyle(fontWeight: FontWeight.w500),
-                          ),
-                          SizedBox(height: 8),
-                          CupertinoTextField(
-                            controller: _phoneController,
-                            placeholder: 'Enter phone number',
-                            keyboardType: TextInputType.phone,
-                            padding: EdgeInsets.all(15),
-                            decoration: BoxDecoration(
-                              border: Border.all(
-                                color: CupertinoColors.systemGrey4,
-                              ),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                          SizedBox(height: 15),
-
-                          // Request OTP button
-                          CupertinoButton(
-                            color: primaryColor,
-                            borderRadius: BorderRadius.circular(10),
-                            onPressed: () async {
-                              await _webApi.requestOTP(
-                                context,
-                                phoneNumber: _phoneController.text,
-                              );
-                              setDialogState(() {});
-                            },
-                            child: Text(
-                              'Request OTP',
-                              style: TextStyle(color: Colors.white),
-                            ),
-                          ),
-                          SizedBox(height: 25),
-
-                          // OTP input
-                          Text(
-                            'OTP',
-                            style: TextStyle(fontWeight: FontWeight.w500),
-                          ),
-                          SizedBox(height: 8),
-                          CupertinoTextField(
-                            controller: _otpController,
-                            placeholder: 'Enter OTP',
-                            keyboardType: TextInputType.number,
-                            padding: EdgeInsets.all(15),
-                            decoration: BoxDecoration(
-                              border: Border.all(
-                                color: CupertinoColors.systemGrey4,
-                              ),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                          SizedBox(height: 15),
-
-                          // Verify OTP button
-                          CupertinoButton(
-                            color: primaryColor,
-                            borderRadius: BorderRadius.circular(10),
-                            onPressed: () async {
-                              await _webApi.verifyOTP(
-                                context,
-                                phoneNumber: _phoneController.text,
-                                otp: _otpController.text,
-                              );
-                              setDialogState(() {});
-                            },
-                            child: Text(
-                              'Verify OTP',
-                              style: TextStyle(color: Colors.white),
-                            ),
-                          ),
-                          SizedBox(height: 25),
-
-                          // Get Lock List button
-                          CupertinoButton(
-                            color: hasAccessToken
-                                ? CupertinoColors.activeGreen
-                                : CupertinoColors.systemGrey,
-                            borderRadius: BorderRadius.circular(10),
-                            onPressed: hasAccessToken
-                                ? () async {
-                                    await _webApi.getLockList(context);
-                                    setDialogState(() {});
-                                  }
-                                : null,
-                            child: Text(
-                              'Get Lock List',
-                              style: TextStyle(color: Colors.white),
-                            ),
-                          ),
-                          SizedBox(height: 30),
-
-                          // Close button
-                          CupertinoButton(
-                            child: Text(
-                              'Close',
-                              style: TextStyle(
-                                color: CupertinoColors.systemRed,
-                              ),
-                            ),
-                            onPressed: () => Navigator.of(dialogContext).pop(),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildStatusRow(String label, bool isActive) {
-    return Row(
-      children: [
-        Container(
-          width: 12,
-          height: 12,
-          decoration: BoxDecoration(
-            color: isActive
-                ? CupertinoColors.activeGreen
-                : CupertinoColors.systemRed,
-            shape: BoxShape.circle,
-          ),
-        ),
-        SizedBox(width: 10),
-        Text(label),
-        Spacer(),
-        Text(
-          isActive ? 'Available' : 'Not Set',
-          style: TextStyle(
-            color: isActive
-                ? CupertinoColors.activeGreen
-                : CupertinoColors.systemGrey,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
-    );
-  }
-
-  // Method to unlock via API
-  Future<void> _unlockViaApi() async {
+  // Method to unlock via Firebase toggle
+  Future<void> _toggleUnlock() async {
     // Prevent unlock if already unlocked or currently unlocking
     if (!isLocked || isUnlocking) {
-      return;
-    }
-
-    final appState = Provider.of<AppState>(context, listen: false);
-
-    if (appState.accessToken.isEmpty || appState.lockID.isEmpty) {
-      // Not authenticated - show authentication failure alert
-      showCupertinoDialog(
-        context: context,
-        builder: (BuildContext dialogContext) {
-          return CupertinoAlertDialog(
-            title: const Text('Authentication Failure'),
-            content: const Padding(
-              padding: EdgeInsets.only(top: 8.0),
-              child: Text(
-                'Please verify OTP and get lock list before attempting to unlock the door.',
-              ),
-            ),
-            actions: [
-              CupertinoDialogAction(
-                isDefaultAction: true,
-                onPressed: () {
-                  Navigator.of(dialogContext).pop();
-                },
-                child: const Text('OK'),
-              ),
-            ],
-          );
-        },
-      );
       return;
     }
 
@@ -727,29 +472,45 @@ class _DoorLockScreenState extends State<DoorLockScreen> {
       isUnlocking = true;
     });
 
-    // Call unlock API
-    final result = await _webApi.unlockDoor(context);
+    try {
+      // Set unlock_door to true in Firebase
+      await _dbRef.child('unlock_door').set(true);
+      print('[DEBUG] DoorLockScreen: Set unlock_door = true in Firebase');
 
-    setState(() {
-      isUnlocking = false;
-    });
+      // Wait 2 seconds (manual loader)
+      await Future.delayed(const Duration(seconds: 2));
 
-    if (result['success'] == true) {
-      // Unlock successful - update icon
+      if (!mounted) return;
+
+      // Unlock successful - update UI
       setState(() {
+        isUnlocking = false;
         isLocked = false;
       });
 
-      // Auto-lock after 8 seconds
-      Future.delayed(const Duration(seconds: 8), () {
+      // Auto-lock after 8 seconds and reset Firebase flag
+      Future.delayed(const Duration(seconds: 8), () async {
         if (mounted && !isLocked) {
           setState(() {
             isLocked = true;
           });
+          try {
+            await _dbRef.child('unlock_door').set(false);
+            print(
+              '[DEBUG] DoorLockScreen: Set unlock_door = false in Firebase (auto-lock)',
+            );
+          } catch (e) {
+            print('[ERROR] DoorLockScreen: Failed to reset unlock_door: $e');
+          }
         }
       });
+    } catch (e) {
+      print('[ERROR] DoorLockScreen: Failed to set unlock_door: $e');
+      if (!mounted) return;
+      setState(() {
+        isUnlocking = false;
+      });
     }
-    // If failed, the toast is already shown by WebApi, icon stays locked
   }
 }
 
