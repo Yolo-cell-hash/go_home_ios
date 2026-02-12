@@ -2,6 +2,10 @@
 
 A comprehensive iOS smart home control application built with Flutter that enables users to control and monitor various IoT devices and home automation systems. Designed for Godrej smart home ecosystems, this app provides seamless control over door locks, cameras, lights, fans, sensors, and more.
 
+> 📚 **New to the documentation?** Check out the [Documentation Index](DOCS_INDEX.md) for a complete guide to all available documentation.
+> 
+> ⚡ **Want to get started quickly?** Jump to the [Quick Start Guide](QUICKSTART.md) for a 5-minute setup.
+
 ## 📱 App Overview
 
 Godrej Home is a feature-rich smart home automation app that brings complete control of your home at your fingertips. The app integrates with Firebase for real-time data synchronization and supports multiple IoT protocols including Bluetooth Low Energy (BLE) for device communication.
