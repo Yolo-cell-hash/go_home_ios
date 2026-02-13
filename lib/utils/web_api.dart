@@ -269,6 +269,62 @@ class WebApi {
     }
   }
 
+  /// Attempt to refresh the access token using the stored refresh token.
+  /// Returns true on success, false on failure (caller should fall back to OTP).
+  Future<bool> refreshAccessToken(BuildContext context) async {
+    if (!context.mounted) return false;
+
+    String refreshToken = Provider.of<AppState>(
+      context,
+      listen: false,
+    ).refreshToken;
+
+    if (refreshToken.isEmpty) {
+      print('[DEBUG] refreshAccessToken: No refresh token available');
+      return false;
+    }
+
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/integrators/v1/auth/refresh-token'),
+        headers: {'Content-Type': 'application/json', 'x-api-key': apiKey},
+        body: jsonEncode({'refreshToken': refreshToken}),
+      );
+
+      print('[DEBUG] refreshAccessToken status: ${response.statusCode}');
+      print('[DEBUG] refreshAccessToken body: ${response.body}');
+
+      _addLog(
+        'Refresh Access Token',
+        response.statusCode,
+        response.body,
+        response.statusCode == 200,
+      );
+
+      if (response.statusCode == 200) {
+        Map<String, dynamic> responseData = jsonDecode(response.body);
+        String? newAccessToken = responseData['accessToken'];
+        String? newRefreshToken = responseData['refreshToken'];
+
+        if (newAccessToken != null && context.mounted) {
+          Provider.of<AppState>(context, listen: false).accessToken =
+              newAccessToken;
+          if (newRefreshToken != null) {
+            Provider.of<AppState>(context, listen: false).refreshToken =
+                newRefreshToken;
+          }
+          print('[DEBUG] refreshAccessToken: Tokens refreshed successfully');
+          return true;
+        }
+      }
+      return false;
+    } catch (e) {
+      print('[DEBUG] refreshAccessToken error: $e');
+      _addLog('Refresh Access Token', 0, 'Error: $e', false);
+      return false;
+    }
+  }
+
   Future<void> getLockList(BuildContext context) async {
     if (!context.mounted) return;
 
@@ -413,14 +469,21 @@ class WebApi {
         final decoded = jsonDecode(response.body);
         if (decoded is List) {
           return decoded.cast<Map<String, dynamic>>();
-        } else if (decoded is Map && decoded.containsKey('data')) {
-          final data = decoded['data'];
-          if (data is List) {
-            return data.cast<Map<String, dynamic>>();
+        } else if (decoded is Map) {
+          // API returns {"items": [...]}
+          if (decoded.containsKey('items')) {
+            final items = decoded['items'];
+            if (items is List) {
+              return items.cast<Map<String, dynamic>>();
+            }
           }
-        }
-        // Fallback: wrap single map in a list
-        if (decoded is Map) {
+          if (decoded.containsKey('data')) {
+            final data = decoded['data'];
+            if (data is List) {
+              return data.cast<Map<String, dynamic>>();
+            }
+          }
+          // Fallback: wrap single map in a list
           return [Map<String, dynamic>.from(decoded)];
         }
         return [];

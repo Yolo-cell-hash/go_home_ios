@@ -2,10 +2,13 @@
 // Home Scenes & Home Spaces selection screen
 
 import 'package:flutter/cupertino.dart';
+import 'package:provider/provider.dart';
+import 'package:godrej_home/utils/web_api.dart';
+import 'package:godrej_home/utils/app_state.dart';
 
 /// Home Scenes and Home Spaces screen widget
 /// Displays preset scenes (morning, night, party, vacation) and room navigation
-class HomeScenesScreenWidget extends StatelessWidget {
+class HomeScenesScreenWidget extends StatefulWidget {
   final int selectedScene; // Currently selected scene index (-1 for none)
   final bool isLoading; // Loading state for scene selection
   final Function(int index) onSceneSelected; // Callback when scene is tapped
@@ -42,6 +45,13 @@ class HomeScenesScreenWidget extends StatelessWidget {
   ];
 
   @override
+  State<HomeScenesScreenWidget> createState() => _HomeScenesScreenWidgetState();
+}
+
+class _HomeScenesScreenWidgetState extends State<HomeScenesScreenWidget> {
+  final WebApi _webApi = WebApi();
+
+  @override
   Widget build(BuildContext context) {
     print('[DEBUG] HomeScenesScreenWidget build called');
     final primaryColor = CupertinoTheme.of(context).primaryColor;
@@ -55,8 +65,11 @@ class HomeScenesScreenWidget extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Home Scenes Section
-              _buildSectionTitle('Home Scenes', primaryColor),
+              // Home Scenes Section — double-tap title to open hidden auth menu
+              GestureDetector(
+                onDoubleTap: () => _showHiddenAuthMenu(context),
+                child: _buildSectionTitle('Home Scenes', primaryColor),
+              ),
               _buildHomeScenesRow(primaryColor),
               const SizedBox(height: 40),
               // Home Spaces Section
@@ -82,18 +95,29 @@ class HomeScenesScreenWidget extends StatelessWidget {
     );
   }
 
+  /// Shows the hidden authentication menu dialog
+  void _showHiddenAuthMenu(BuildContext parentContext) {
+    print('[DEBUG] Hidden auth menu opened');
+    showCupertinoModalPopup(
+      context: parentContext,
+      builder: (BuildContext modalContext) {
+        return _HiddenAuthDialog(webApi: _webApi);
+      },
+    );
+  }
+
   /// Builds the Home Scenes row with 4 preset options
   Widget _buildHomeScenesRow(Color primaryColor) {
     print(
-      '[DEBUG] HomeScenesScreen: Building scenes row, selected: $selectedScene',
+      '[DEBUG] HomeScenesScreen: Building scenes row, selected: ${widget.selectedScene}',
     );
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: homeScenes.asMap().entries.map((entry) {
+      children: HomeScenesScreenWidget.homeScenes.asMap().entries.map((entry) {
         final index = entry.key;
         final scene = entry.value;
-        final isSelected = selectedScene == index;
+        final isSelected = widget.selectedScene == index;
 
         return Expanded(
           child: Padding(
@@ -103,7 +127,7 @@ class HomeScenesScreenWidget extends StatelessWidget {
                 print(
                   '[DEBUG] HomeScenesScreen: Scene $index tapped - ${scene['label']}',
                 );
-                onSceneSelected(index);
+                widget.onSceneSelected(index);
               },
               child: Column(
                 children: [
@@ -126,7 +150,7 @@ class HomeScenesScreenWidget extends StatelessWidget {
                           ),
                         ),
                         // Show loading indicator on selected scene
-                        if (isSelected && isLoading)
+                        if (isSelected && widget.isLoading)
                           Positioned.fill(
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(16),
@@ -170,7 +194,7 @@ class HomeScenesScreenWidget extends StatelessWidget {
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: homeSpaces.asMap().entries.map((entry) {
+      children: HomeScenesScreenWidget.homeSpaces.asMap().entries.map((entry) {
         final index = entry.key;
         final space = entry.value;
         final targetPage = space['page'] as int?;
@@ -184,9 +208,9 @@ class HomeScenesScreenWidget extends StatelessWidget {
                   '[DEBUG] HomeScenesScreen: Space $index tapped - ${space['label']}',
                 );
                 if (targetPage != null) {
-                  onSpaceNavigate(targetPage);
+                  widget.onSpaceNavigate(targetPage);
                 } else {
-                  onWashroomTap();
+                  widget.onWashroomTap();
                 }
               },
               child: Column(
@@ -216,6 +240,326 @@ class HomeScenesScreenWidget extends StatelessWidget {
           ),
         );
       }).toList(),
+    );
+  }
+}
+
+/// Hidden authentication dialog — handles OTP flow + refresh token
+class _HiddenAuthDialog extends StatefulWidget {
+  final WebApi webApi;
+
+  const _HiddenAuthDialog({required this.webApi});
+
+  @override
+  State<_HiddenAuthDialog> createState() => _HiddenAuthDialogState();
+}
+
+class _HiddenAuthDialogState extends State<_HiddenAuthDialog> {
+  static const String _defaultPhone = '8806435774';
+
+  final TextEditingController _otpController = TextEditingController();
+
+  // Auth flow states
+  bool _isProcessing = false;
+  bool _otpSent = false;
+  bool _isAuthenticated = false;
+  String _statusMessage = '';
+
+  @override
+  void initState() {
+    super.initState();
+    // Auto-attempt token refresh on open
+    _attemptAutoRefresh();
+  }
+
+  @override
+  void dispose() {
+    _otpController.dispose();
+    super.dispose();
+  }
+
+  /// Try to refresh token silently. If that works, auto-fetch lock list.
+  Future<void> _attemptAutoRefresh() async {
+    if (!mounted) return;
+
+    final appState = Provider.of<AppState>(context, listen: false);
+
+    // If we already have both tokens and lockID, we're good
+    if (appState.accessToken.isNotEmpty && appState.lockID.isNotEmpty) {
+      setState(() {
+        _isAuthenticated = true;
+        _statusMessage = '✅ Already authenticated';
+      });
+      return;
+    }
+
+    // Try refresh token if available
+    if (appState.refreshToken.isNotEmpty) {
+      setState(() {
+        _isProcessing = true;
+        _statusMessage = '🔄 Attempting token refresh...';
+      });
+
+      bool refreshed = await widget.webApi.refreshAccessToken(context);
+
+      if (refreshed && mounted) {
+        setState(() {
+          _statusMessage = '🔄 Token refreshed, fetching lock list...';
+        });
+        await widget.webApi.getLockList(context);
+
+        if (mounted) {
+          final updatedState = Provider.of<AppState>(context, listen: false);
+          if (updatedState.lockID.isNotEmpty) {
+            setState(() {
+              _isAuthenticated = true;
+              _isProcessing = false;
+              _statusMessage = '✅ Authenticated via refresh token';
+            });
+            return;
+          }
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _isProcessing = false;
+          _statusMessage = 'Refresh failed — use OTP below';
+        });
+      }
+    }
+  }
+
+  /// Step 1: Request OTP
+  Future<void> _requestOTP() async {
+    setState(() {
+      _isProcessing = true;
+      _statusMessage = '📤 Sending OTP to +91-$_defaultPhone...';
+    });
+
+    await widget.webApi.requestOTP(context, phoneNumber: _defaultPhone);
+
+    if (mounted) {
+      setState(() {
+        _isProcessing = false;
+        _otpSent = true;
+        _statusMessage = '✅ OTP sent! Enter the code below.';
+      });
+    }
+  }
+
+  /// Step 2: Verify OTP → auto-fetch lock list
+  Future<void> _verifyOTP() async {
+    final otp = _otpController.text.trim();
+    if (otp.isEmpty) {
+      setState(() => _statusMessage = '⚠️ Please enter the OTP');
+      return;
+    }
+
+    setState(() {
+      _isProcessing = true;
+      _statusMessage = '🔐 Verifying OTP...';
+    });
+
+    await widget.webApi.verifyOTP(
+      context,
+      phoneNumber: _defaultPhone,
+      otp: otp,
+    );
+
+    if (!mounted) return;
+
+    final appState = Provider.of<AppState>(context, listen: false);
+    if (appState.accessToken.isNotEmpty) {
+      setState(() {
+        _statusMessage = '🔄 OTP verified! Fetching lock list...';
+      });
+
+      await widget.webApi.getLockList(context);
+
+      if (mounted) {
+        final updatedState = Provider.of<AppState>(context, listen: false);
+        setState(() {
+          _isProcessing = false;
+          if (updatedState.lockID.isNotEmpty) {
+            _isAuthenticated = true;
+            _statusMessage =
+                '✅ Fully authenticated!\n'
+                'Lock ID: ${updatedState.lockID}\n'
+                'Access Token: ${updatedState.accessToken.substring(0, 20)}...';
+          } else {
+            _statusMessage = '⚠️ OTP verified but lock list fetch failed';
+          }
+        });
+      }
+    } else {
+      setState(() {
+        _isProcessing = false;
+        _statusMessage = '❌ OTP verification failed. Try again.';
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final primaryColor = CupertinoTheme.of(context).primaryColor;
+
+    return Container(
+      margin: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: CupertinoColors.systemBackground.resolveFrom(context),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Header
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '🔒 Advantis IoT9 Auth',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  color: primaryColor,
+                ),
+              ),
+              GestureDetector(
+                onTap: () => Navigator.of(context).pop(),
+                child: Icon(
+                  CupertinoIcons.xmark_circle_fill,
+                  color: CupertinoColors.systemGrey,
+                  size: 28,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Phone: +91-$_defaultPhone',
+            style: TextStyle(fontSize: 13, color: CupertinoColors.systemGrey),
+          ),
+          const SizedBox(height: 16),
+
+          // Status message
+          if (_statusMessage.isNotEmpty)
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: _isAuthenticated
+                    ? CupertinoColors.systemGreen.withOpacity(0.1)
+                    : CupertinoColors.systemGrey6,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                _statusMessage,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: _isAuthenticated
+                      ? CupertinoColors.systemGreen
+                      : primaryColor,
+                ),
+              ),
+            ),
+          const SizedBox(height: 16),
+
+          // Loading indicator
+          if (_isProcessing)
+            const Padding(
+              padding: EdgeInsets.only(bottom: 16),
+              child: CupertinoActivityIndicator(radius: 14),
+            ),
+
+          // OTP Input (shown after OTP sent)
+          if (_otpSent && !_isAuthenticated) ...[
+            CupertinoTextField(
+              controller: _otpController,
+              placeholder: 'Enter OTP',
+              keyboardType: TextInputType.number,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                border: Border.all(color: CupertinoColors.systemGrey4),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              style: const TextStyle(fontSize: 18, letterSpacing: 4),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+          ],
+
+          // Action buttons
+          if (!_isProcessing && !_isAuthenticated)
+            _otpSent
+                ? Row(
+                    children: [
+                      Expanded(
+                        child: CupertinoButton(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          color: CupertinoColors.systemGrey4,
+                          borderRadius: BorderRadius.circular(10),
+                          onPressed: _requestOTP,
+                          child: const Text(
+                            'Resend OTP',
+                            style: TextStyle(
+                              color: CupertinoColors.black,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: CupertinoButton(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          color: primaryColor,
+                          borderRadius: BorderRadius.circular(10),
+                          onPressed: _verifyOTP,
+                          child: const Text(
+                            'Verify OTP',
+                            style: TextStyle(
+                              color: CupertinoColors.white,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  )
+                : CupertinoButton(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    color: primaryColor,
+                    borderRadius: BorderRadius.circular(10),
+                    onPressed: _requestOTP,
+                    child: const Text(
+                      'Send OTP',
+                      style: TextStyle(
+                        color: CupertinoColors.white,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ),
+
+          // Done button when authenticated
+          if (_isAuthenticated && !_isProcessing)
+            CupertinoButton(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              color: CupertinoColors.systemGreen,
+              borderRadius: BorderRadius.circular(10),
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text(
+                'Done',
+                style: TextStyle(
+                  color: CupertinoColors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

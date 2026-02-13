@@ -844,22 +844,37 @@ class _DoorLockScreenState extends State<DoorLockScreen> {
   }
 
   Widget _buildTrailItem(Map<String, dynamic> trail, Color primaryColor) {
-    // Extract common fields with fallbacks
-    final action =
-        trail['action'] ?? trail['eventType'] ?? trail['type'] ?? 'Unknown';
-    final user = trail['userName'] ?? trail['user'] ?? trail['name'] ?? '';
+    // Extract fields matching actual API: eventType, eventTimestamp, accessType, firstAccess, secondAccess
+    final eventType =
+        (trail['eventType'] ?? trail['action'] ?? trail['type'] ?? 'Unknown')
+            .toString();
+    final accessType = (trail['accessType'] ?? trail['method'] ?? '')
+        .toString();
     final rawTimestamp =
-        trail['timestamp'] ??
-        trail['eventTimestamp'] ??
-        trail['createdAt'] ??
-        '';
-    final method = trail['method'] ?? trail['unlockMethod'] ?? '';
+        (trail['eventTimestamp'] ??
+                trail['timestamp'] ??
+                trail['createdAt'] ??
+                '')
+            .toString();
+
+    // Extract user info from firstAccess / secondAccess
+    final firstAccess = trail['firstAccess'];
+    final secondAccess = trail['secondAccess'];
+    String userName = '';
+    if (firstAccess != null && firstAccess is Map) {
+      userName = (firstAccess['name'] ?? firstAccess['userName'] ?? '')
+          .toString();
+    }
+    if (userName.isEmpty && secondAccess != null && secondAccess is Map) {
+      userName = (secondAccess['name'] ?? secondAccess['userName'] ?? '')
+          .toString();
+    }
 
     // Format timestamp
     String formattedTime = '';
-    if (rawTimestamp.toString().isNotEmpty) {
+    if (rawTimestamp.isNotEmpty) {
       try {
-        final dt = DateTime.parse(rawTimestamp.toString());
+        final dt = DateTime.parse(rawTimestamp);
         final local = dt.toLocal();
         final months = [
           'Jan',
@@ -882,27 +897,65 @@ class _DoorLockScreenState extends State<DoorLockScreen> {
         formattedTime =
             '${local.day.toString().padLeft(2, '0')} ${months[local.month - 1]} ${local.year}, ${hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')} $amPm';
       } catch (_) {
-        formattedTime = rawTimestamp.toString();
+        formattedTime = rawTimestamp;
       }
     }
 
-    // Pick icon based on action
+    // Friendly display name for event type
+    String displayEvent;
+    final eventLower = eventType.toLowerCase();
+    if (eventLower == 'locked') {
+      displayEvent = 'Door Locked';
+    } else if (eventLower == 'unlocked') {
+      displayEvent = 'Door Unlocked';
+    } else {
+      displayEvent =
+          eventType[0].toUpperCase() + eventType.substring(1).toLowerCase();
+    }
+
+    // Friendly display for access type
+    String displayAccess = '';
+    if (accessType.isNotEmpty) {
+      switch (accessType.toLowerCase()) {
+        case 'autolock':
+          displayAccess = 'Auto Lock';
+          break;
+        case 'pin':
+          displayAccess = 'PIN Code';
+          break;
+        case 'fingerprint':
+          displayAccess = 'Fingerprint';
+          break;
+        case 'rfid':
+          displayAccess = 'RFID Card';
+          break;
+        case 'remote':
+          displayAccess = 'Remote Access';
+          break;
+        case 'manual':
+          displayAccess = 'Manual';
+          break;
+        default:
+          displayAccess = accessType[0].toUpperCase() + accessType.substring(1);
+      }
+    }
+
+    // Pick icon and color based on event type
     IconData iconData;
     Color iconColor;
-    final actionLower = action.toString().toLowerCase();
-    if (actionLower.contains('unlock')) {
+    if (eventLower.contains('unlock')) {
       iconData = CupertinoIcons.lock_open_fill;
-      iconColor = Color(0xFF4CAF50);
-    } else if (actionLower.contains('lock')) {
+      iconColor = const Color(0xFF4CAF50);
+    } else if (eventLower.contains('lock')) {
       iconData = CupertinoIcons.lock_fill;
       iconColor = CupertinoColors.systemRed;
-    } else if (actionLower.contains('privacy')) {
+    } else if (eventLower.contains('privacy')) {
       iconData = CupertinoIcons.eye_slash_fill;
       iconColor = CupertinoColors.systemOrange;
-    } else if (actionLower.contains('passage')) {
+    } else if (eventLower.contains('passage')) {
       iconData = CupertinoIcons.arrow_right_arrow_left;
       iconColor = CupertinoColors.systemBlue;
-    } else if (actionLower.contains('tamper')) {
+    } else if (eventLower.contains('tamper')) {
       iconData = CupertinoIcons.exclamationmark_triangle_fill;
       iconColor = CupertinoColors.systemRed;
     } else {
@@ -911,7 +964,7 @@ class _DoorLockScreenState extends State<DoorLockScreen> {
     }
 
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: 10),
+      padding: const EdgeInsets.symmetric(vertical: 10),
       child: Row(
         children: [
           // Icon
@@ -924,35 +977,35 @@ class _DoorLockScreenState extends State<DoorLockScreen> {
             ),
             child: Center(child: Icon(iconData, color: iconColor, size: 20)),
           ),
-          SizedBox(width: 14),
+          const SizedBox(width: 14),
           // Details
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  action.toString(),
-                  style: TextStyle(
+                  displayEvent,
+                  style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
                     color: CupertinoColors.black,
                   ),
                 ),
-                if (user.toString().isNotEmpty) ...[
-                  SizedBox(height: 2),
+                if (displayAccess.isNotEmpty) ...[
+                  const SizedBox(height: 2),
                   Text(
-                    user.toString(),
-                    style: TextStyle(
+                    displayAccess,
+                    style: const TextStyle(
                       fontSize: 13,
                       color: CupertinoColors.systemGrey,
                     ),
                   ),
                 ],
-                if (method.toString().isNotEmpty) ...[
-                  SizedBox(height: 2),
+                if (userName.isNotEmpty) ...[
+                  const SizedBox(height: 2),
                   Text(
-                    'via $method',
-                    style: TextStyle(
+                    userName,
+                    style: const TextStyle(
                       fontSize: 12,
                       color: CupertinoColors.systemGrey2,
                       fontStyle: FontStyle.italic,
@@ -966,7 +1019,7 @@ class _DoorLockScreenState extends State<DoorLockScreen> {
           if (formattedTime.isNotEmpty)
             Text(
               formattedTime,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 11,
                 color: CupertinoColors.systemGrey2,
               ),
