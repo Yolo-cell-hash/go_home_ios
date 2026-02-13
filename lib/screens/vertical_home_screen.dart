@@ -674,13 +674,88 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
       'Vaccation',
     ];
 
+    // Preset values for each scene
+    final List<Map<String, dynamic>> scenePresets = [
+      // Good Morning
+      {
+        'light intensity': 150,
+        'light-hex-value': '0,103,255',
+        'camera': true,
+        'door-lock': true,
+        'bed-storage': true,
+        'vdb': true,
+        'light': true,
+        'fan': 3,
+        'isFire': true,
+        'is-window-open': true,
+        'window-sensor': true,
+        'party': false,
+      },
+      // Good Night
+      {
+        'light intensity': 50,
+        'light-hex-value': '255,0,193',
+        'camera': true,
+        'door-lock': true,
+        'bed-storage': false,
+        'vdb': true,
+        'light': true,
+        'fan': 4,
+        'isFire': true,
+        'is-window-open': true,
+        'window-sensor': true,
+        'party': false,
+      },
+      // House Party
+      {
+        'light intensity': 220,
+        'light-hex-value': '255,0,193',
+        'camera': true,
+        'door-lock': false,
+        'bed-storage': false,
+        'vdb': false,
+        'light': true,
+        'fan': 4,
+        'isFire': true,
+        'is-window-open': true,
+        'window-sensor': true,
+        'party': true,
+      },
+      // Vaccation
+      {
+        'light intensity': 0,
+        'light-hex-value': '255,0,193',
+        'camera': true,
+        'door-lock': true,
+        'bed-storage': false,
+        'vdb': true,
+        'light': false,
+        'fan': 1,
+        'isFire': true,
+        'is-window-open': true,
+        'window-sensor': true,
+        'party': false,
+      },
+    ];
+
     // Set loading state and selected scene
     setState(() {
       _selectedHomeScene = index;
       _isSceneLoading = true;
     });
 
-    // Show loading for 2 seconds
+    // Write preset values to Firebase
+    try {
+      final preset = scenePresets[index];
+      for (final entry in preset.entries) {
+        await _dbRef.child(entry.key).set(entry.value);
+      }
+      print('[DEBUG] Scene $index preset values written to Firebase');
+    } catch (e) {
+      print('[ERROR] Failed to write scene preset to Firebase: $e');
+    }
+
+    // Ensure minimum 2 seconds loading
     await Future.delayed(const Duration(seconds: 2));
 
     setState(() {

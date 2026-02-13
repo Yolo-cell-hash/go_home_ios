@@ -25,8 +25,11 @@ class _DoorLockScreenState extends State<DoorLockScreen> {
   // Activity trails state
   List<Map<String, dynamic>>? _activityTrails;
   bool _isLoadingTrails = false;
-  String _privacyModeStatus = 'Unknown';
-  String _passageModeStatus = 'Unknown';
+
+  // Lock status API state
+  String _lockState = 'Unknown';
+  String _lockMode = 'Unknown';
+  bool _isLoadingLockStatus = false;
 
   // Firebase database reference
   final DatabaseReference _dbRef = FirebaseDatabase.instance.ref(
@@ -38,9 +41,10 @@ class _DoorLockScreenState extends State<DoorLockScreen> {
   @override
   void initState() {
     super.initState();
-    // Fetch activity trails after first frame to ensure context is available
+    // Fetch activity trails and lock status after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _fetchActivityTrails();
+      _fetchLockStatus();
     });
   }
 
@@ -59,7 +63,6 @@ class _DoorLockScreenState extends State<DoorLockScreen> {
       setState(() {
         _activityTrails = trails;
         _isLoadingTrails = false;
-        _parseModesFromTrails(trails);
       });
     } catch (e) {
       print('[ERROR] DoorLockScreen: Failed to fetch activity trails: $e');
@@ -70,64 +73,50 @@ class _DoorLockScreenState extends State<DoorLockScreen> {
     }
   }
 
-  /// Parses privacy and passage mode status from trail entries.
-  /// Looks for the most recent entry that mentions each mode.
-  void _parseModesFromTrails(List<Map<String, dynamic>>? trails) {
-    if (trails == null || trails.isEmpty) {
-      _privacyModeStatus = 'Unknown';
-      _passageModeStatus = 'Unknown';
-      return;
-    }
+  /// Fetches lock status from the API (lockState, lockMode, batteryStatus, etc.)
+  Future<void> _fetchLockStatus() async {
+    if (!mounted) return;
 
-    bool foundPrivacy = false;
-    bool foundPassage = false;
+    setState(() {
+      _isLoadingLockStatus = true;
+    });
 
-    for (final trail in trails) {
-      final action =
-          (trail['action'] ?? trail['eventType'] ?? trail['type'] ?? '')
-              .toString()
-              .toLowerCase();
-      final status = (trail['status'] ?? trail['state'] ?? '')
-          .toString()
-          .toLowerCase();
+    try {
+      final statusData = await _webApi.getLockStatus(context);
 
-      // Check for privacy mode
-      if (!foundPrivacy && action.contains('privacy')) {
-        foundPrivacy = true;
-        if (action.contains('enable') ||
-            action.contains('on') ||
-            status == 'enabled' ||
-            status == 'on') {
-          _privacyModeStatus = 'Enabled';
-        } else if (action.contains('disable') ||
-            action.contains('off') ||
-            status == 'disabled' ||
-            status == 'off') {
-          _privacyModeStatus = 'Disabled';
-        } else {
-          _privacyModeStatus = 'Active';
-        }
+      if (!mounted) return;
+
+      if (statusData != null) {
+        setState(() {
+          _lockState = statusData['lockState']?.toString() ?? 'Unknown';
+          _lockMode = statusData['lockMode']?.toString() ?? 'Unknown';
+          _isLoadingLockStatus = false;
+
+          // Update battery level from API if available
+          final battery = statusData['batteryStatus']?.toString().toUpperCase();
+          if (battery == 'GOOD') {
+            batteryLevel = 0.85;
+          } else if (battery == 'LOW') {
+            batteryLevel = 0.25;
+          } else if (battery == 'CRITICAL') {
+            batteryLevel = 0.10;
+          }
+        });
+        print(
+          '[DEBUG] DoorLockScreen: Lock status - lockState=$_lockState, lockMode=$_lockMode',
+        );
+      } else {
+        setState(() {
+          _isLoadingLockStatus = false;
+        });
+        print('[DEBUG] DoorLockScreen: Lock status returned null');
       }
-
-      // Check for passage mode
-      if (!foundPassage && action.contains('passage')) {
-        foundPassage = true;
-        if (action.contains('enable') ||
-            action.contains('on') ||
-            status == 'enabled' ||
-            status == 'on') {
-          _passageModeStatus = 'Enabled';
-        } else if (action.contains('disable') ||
-            action.contains('off') ||
-            status == 'disabled' ||
-            status == 'off') {
-          _passageModeStatus = 'Disabled';
-        } else {
-          _passageModeStatus = 'Active';
-        }
-      }
-
-      if (foundPrivacy && foundPassage) break;
+    } catch (e) {
+      print('[ERROR] DoorLockScreen: Failed to fetch lock status: $e');
+      if (!mounted) return;
+      setState(() {
+        _isLoadingLockStatus = false;
+      });
     }
   }
 
@@ -385,7 +374,7 @@ class _DoorLockScreenState extends State<DoorLockScreen> {
                               ),
                               child: Column(
                                 children: [
-                                  // First row: Privacy Mode & Passage Mode (read-only status)
+                                  // First row: Lock State & Lock Mode (read-only from API)
                                   Expanded(
                                     child: Row(
                                       mainAxisAlignment:
@@ -393,16 +382,16 @@ class _DoorLockScreenState extends State<DoorLockScreen> {
                                       children: [
                                         _buildStatusCard(
                                           imagePath: 'images/privacy_mode.png',
-                                          label: 'Privacy Mode',
-                                          status: _privacyModeStatus,
-                                          isLoading: _isLoadingTrails,
+                                          label: 'Lock State',
+                                          status: _lockState,
+                                          isLoading: _isLoadingLockStatus,
                                           primaryColor: primaryColor,
                                         ),
                                         _buildStatusCard(
                                           imagePath: 'images/passage_mode.png',
-                                          label: 'Passage Mode',
-                                          status: _passageModeStatus,
-                                          isLoading: _isLoadingTrails,
+                                          label: 'Lock Mode',
+                                          status: _lockMode,
+                                          isLoading: _isLoadingLockStatus,
                                           primaryColor: primaryColor,
                                         ),
                                       ],
@@ -1055,6 +1044,13 @@ class _DoorLockScreenState extends State<DoorLockScreen> {
       setState(() {
         isUnlocking = false;
         isLocked = false;
+      });
+
+      // Fetch lock status 3 seconds after unlock
+      Future.delayed(const Duration(seconds: 3), () {
+        if (mounted) {
+          _fetchLockStatus();
+        }
       });
 
       // Auto-lock after 8 seconds and reset Firebase flag

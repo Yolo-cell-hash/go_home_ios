@@ -498,10 +498,10 @@ class WebApi {
     }
   }
 
-  Future<void> getLockStatus(BuildContext context) async {
-    _safeShowLoader(context);
-
-    if (!context.mounted) return;
+  /// Fetches the current lock status (lockState, lockMode, batteryStatus, etc.)
+  /// Returns the parsed response map on success, or null on failure.
+  Future<Map<String, dynamic>?> getLockStatus(BuildContext context) async {
+    if (!context.mounted) return null;
 
     String accessToken = Provider.of<AppState>(
       context,
@@ -509,17 +509,22 @@ class WebApi {
     ).accessToken;
     String lockID = Provider.of<AppState>(context, listen: false).lockID;
 
+    if (accessToken.isEmpty || lockID.isEmpty) {
+      print('[DEBUG] getLockStatus: Missing accessToken or lockID');
+      return null;
+    }
+
     try {
       response = await http.get(
-        Uri.parse('$baseUrl/integrators/v1/lock/${lockID}/status'),
+        Uri.parse('$baseUrl/integrators/v1/lock/$lockID/status'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $accessToken',
         },
       );
 
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
+      print('[DEBUG] getLockStatus status: ${response.statusCode}');
+      print('[DEBUG] getLockStatus body: ${response.body}');
 
       _addLog(
         'Get Lock Status',
@@ -528,18 +533,20 @@ class WebApi {
         response.statusCode == 200,
       );
 
-      _safeHideLoader(context);
-
       if (response.statusCode == 200) {
-        _showToast('Lock status retrieved successfully!', true);
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map<String, dynamic>) {
+          return decoded;
+        }
+        return null;
       } else {
-        _showToast('Failed to get lock status', false);
+        print('[DEBUG] getLockStatus failed: ${response.statusCode}');
+        return null;
       }
     } catch (e) {
-      print('Error making POST request: $e');
+      print('[ERROR] getLockStatus: $e');
       _addLog('Get Lock Status', 0, 'Error: $e', false);
-      _showToast('Error: $e', false);
-      _safeHideLoader(context);
+      return null;
     }
   }
 
