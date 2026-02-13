@@ -4,7 +4,9 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:godrej_home/utils/web_api.dart';
 import 'package:godrej_home/widgets/navbar_setup.dart';
+
 import 'dart:math' as math;
 
 /// Door lock control screen
@@ -17,15 +19,117 @@ class DoorLockScreen extends StatefulWidget {
 
 class _DoorLockScreenState extends State<DoorLockScreen> {
   bool isLocked = true;
-  bool privacyMode = false;
-  bool passageMode = false;
   double batteryLevel = 0.75; // 75% battery
   bool isUnlocking = false; // Loading state for unlock operation
+
+  // Activity trails state
+  List<Map<String, dynamic>>? _activityTrails;
+  bool _isLoadingTrails = false;
+  String _privacyModeStatus = 'Unknown';
+  String _passageModeStatus = 'Unknown';
 
   // Firebase database reference
   final DatabaseReference _dbRef = FirebaseDatabase.instance.ref(
     'automation-flags',
   );
+
+  final WebApi _webApi = WebApi();
+
+  @override
+  void initState() {
+    super.initState();
+    // Fetch activity trails after first frame to ensure context is available
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _fetchActivityTrails();
+    });
+  }
+
+  Future<void> _fetchActivityTrails() async {
+    if (!mounted) return;
+
+    setState(() {
+      _isLoadingTrails = true;
+    });
+
+    try {
+      final trails = await _webApi.getActivityTrails(context);
+
+      if (!mounted) return;
+
+      setState(() {
+        _activityTrails = trails;
+        _isLoadingTrails = false;
+        _parseModesFromTrails(trails);
+      });
+    } catch (e) {
+      print('[ERROR] DoorLockScreen: Failed to fetch activity trails: $e');
+      if (!mounted) return;
+      setState(() {
+        _isLoadingTrails = false;
+      });
+    }
+  }
+
+  /// Parses privacy and passage mode status from trail entries.
+  /// Looks for the most recent entry that mentions each mode.
+  void _parseModesFromTrails(List<Map<String, dynamic>>? trails) {
+    if (trails == null || trails.isEmpty) {
+      _privacyModeStatus = 'Unknown';
+      _passageModeStatus = 'Unknown';
+      return;
+    }
+
+    bool foundPrivacy = false;
+    bool foundPassage = false;
+
+    for (final trail in trails) {
+      final action =
+          (trail['action'] ?? trail['eventType'] ?? trail['type'] ?? '')
+              .toString()
+              .toLowerCase();
+      final status = (trail['status'] ?? trail['state'] ?? '')
+          .toString()
+          .toLowerCase();
+
+      // Check for privacy mode
+      if (!foundPrivacy && action.contains('privacy')) {
+        foundPrivacy = true;
+        if (action.contains('enable') ||
+            action.contains('on') ||
+            status == 'enabled' ||
+            status == 'on') {
+          _privacyModeStatus = 'Enabled';
+        } else if (action.contains('disable') ||
+            action.contains('off') ||
+            status == 'disabled' ||
+            status == 'off') {
+          _privacyModeStatus = 'Disabled';
+        } else {
+          _privacyModeStatus = 'Active';
+        }
+      }
+
+      // Check for passage mode
+      if (!foundPassage && action.contains('passage')) {
+        foundPassage = true;
+        if (action.contains('enable') ||
+            action.contains('on') ||
+            status == 'enabled' ||
+            status == 'on') {
+          _passageModeStatus = 'Enabled';
+        } else if (action.contains('disable') ||
+            action.contains('off') ||
+            status == 'disabled' ||
+            status == 'off') {
+          _passageModeStatus = 'Disabled';
+        } else {
+          _passageModeStatus = 'Active';
+        }
+      }
+
+      if (foundPrivacy && foundPassage) break;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -281,34 +385,24 @@ class _DoorLockScreenState extends State<DoorLockScreen> {
                               ),
                               child: Column(
                                 children: [
-                                  // First row: Privacy Mode & Passage Mode
+                                  // First row: Privacy Mode & Passage Mode (read-only status)
                                   Expanded(
                                     child: Row(
                                       mainAxisAlignment:
                                           MainAxisAlignment.spaceEvenly,
                                       children: [
-                                        _buildControlCard(
+                                        _buildStatusCard(
                                           imagePath: 'images/privacy_mode.png',
                                           label: 'Privacy Mode',
-                                          isToggle: true,
-                                          toggleValue: privacyMode,
-                                          onToggle: (value) {
-                                            setState(() {
-                                              privacyMode = value;
-                                            });
-                                          },
+                                          status: _privacyModeStatus,
+                                          isLoading: _isLoadingTrails,
                                           primaryColor: primaryColor,
                                         ),
-                                        _buildControlCard(
+                                        _buildStatusCard(
                                           imagePath: 'images/passage_mode.png',
                                           label: 'Passage Mode',
-                                          isToggle: true,
-                                          toggleValue: passageMode,
-                                          onToggle: (value) {
-                                            setState(() {
-                                              passageMode = value;
-                                            });
-                                          },
+                                          status: _passageModeStatus,
+                                          isLoading: _isLoadingTrails,
                                           primaryColor: primaryColor,
                                         ),
                                       ],
@@ -325,15 +419,21 @@ class _DoorLockScreenState extends State<DoorLockScreen> {
                                         _buildControlCard(
                                           imagePath: 'images/tamper_alarm.png',
                                           label: 'Tamper Alarm',
-                                          isToggle: false,
                                           primaryColor: primaryColor,
                                         ),
-                                        _buildControlCard(
-                                          imagePath:
-                                              'images/activity_trail.png',
-                                          label: 'Activity Trail',
-                                          isToggle: false,
-                                          primaryColor: primaryColor,
+                                        GestureDetector(
+                                          onTap: () =>
+                                              _showActivityTrailSheet(),
+                                          child: _buildControlCard(
+                                            imagePath:
+                                                'images/activity_trail.png',
+                                            label: 'Activity Trail',
+                                            primaryColor: primaryColor,
+                                            showBadge:
+                                                _activityTrails != null &&
+                                                _activityTrails!.isNotEmpty,
+                                            badgeCount: _activityTrails?.length,
+                                          ),
                                         ),
                                       ],
                                     ),
@@ -361,14 +461,27 @@ class _DoorLockScreenState extends State<DoorLockScreen> {
     );
   }
 
-  Widget _buildControlCard({
+  /// Read-only status card for Privacy Mode / Passage Mode (no toggle).
+  Widget _buildStatusCard({
     required String imagePath,
     required String label,
-    required bool isToggle,
-    bool toggleValue = false,
-    Function(bool)? onToggle,
+    required String status,
+    required bool isLoading,
     required Color primaryColor,
   }) {
+    Color statusColor;
+    switch (status) {
+      case 'Enabled':
+      case 'Active':
+        statusColor = const Color(0xFF4CAF50);
+        break;
+      case 'Disabled':
+        statusColor = CupertinoColors.systemGrey;
+        break;
+      default:
+        statusColor = CupertinoColors.systemGrey3;
+    }
+
     return Container(
       padding: EdgeInsets.symmetric(vertical: 15, horizontal: 10),
       decoration: BoxDecoration(
@@ -412,17 +525,112 @@ class _DoorLockScreenState extends State<DoorLockScreen> {
               fontWeight: FontWeight.w500,
             ),
           ),
-          if (isToggle) ...[
-            SizedBox(height: 8),
-            Transform.scale(
-              scale: 0.8,
-              child: CupertinoSwitch(
-                value: toggleValue,
-                onChanged: onToggle,
-                activeColor: primaryColor,
+          SizedBox(height: 6),
+          // Status indicator (replaces the toggle)
+          isLoading
+              ? SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CupertinoActivityIndicator(radius: 8),
+                )
+              : Container(
+                  padding: EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: statusColor.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    status,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: statusColor,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildControlCard({
+    required String imagePath,
+    required String label,
+    required Color primaryColor,
+    bool showBadge = false,
+    int? badgeCount,
+  }) {
+    return Container(
+      padding: EdgeInsets.symmetric(vertical: 15, horizontal: 10),
+      decoration: BoxDecoration(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                width: 70,
+                height: 70,
+                decoration: BoxDecoration(
+                  color: primaryColor,
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Image.asset(
+                    imagePath,
+                    width: 36,
+                    height: 36,
+                    fit: BoxFit.contain,
+                    color: Colors.white,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Icon(
+                        CupertinoIcons.circle,
+                        color: Colors.white,
+                        size: 36,
+                      );
+                    },
+                  ),
+                ),
               ),
+              if (showBadge && badgeCount != null && badgeCount > 0)
+                Positioned(
+                  right: -4,
+                  top: -4,
+                  child: Container(
+                    padding: EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: CupertinoColors.systemRed,
+                      shape: BoxShape.circle,
+                    ),
+                    constraints: BoxConstraints(minWidth: 22, minHeight: 22),
+                    child: Center(
+                      child: Text(
+                        badgeCount > 99 ? '99+' : '$badgeCount',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          SizedBox(height: 10),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 14,
+              color: primaryColor,
+              fontWeight: FontWeight.w500,
             ),
-          ],
+          ),
         ],
       ),
     );
@@ -455,6 +663,314 @@ class _DoorLockScreenState extends State<DoorLockScreen> {
               fontWeight: FontWeight.w500,
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  /// Shows a bottom sheet with the activity trail entries.
+  void _showActivityTrailSheet() {
+    final primaryColor = CupertinoTheme.of(context).primaryColor;
+
+    showCupertinoModalPopup(
+      context: context,
+      builder: (sheetContext) {
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.6,
+          decoration: BoxDecoration(
+            color: CupertinoColors.systemBackground.resolveFrom(context),
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(20),
+              topRight: Radius.circular(20),
+            ),
+          ),
+          child: Column(
+            children: [
+              // Handle bar
+              Padding(
+                padding: const EdgeInsets.only(top: 12, bottom: 8),
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: CupertinoColors.systemGrey3,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              // Title
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 8,
+                ),
+                child: Row(
+                  children: [
+                    Image.asset(
+                      'images/activity_trail.png',
+                      width: 24,
+                      height: 24,
+                      color: primaryColor,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Icon(
+                          CupertinoIcons.clock,
+                          color: primaryColor,
+                          size: 24,
+                        );
+                      },
+                    ),
+                    SizedBox(width: 10),
+                    Text(
+                      'Activity Trail',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                        color: CupertinoColors.black,
+                      ),
+                    ),
+                    Spacer(),
+                    // Refresh button
+                    CupertinoButton(
+                      padding: EdgeInsets.zero,
+                      onPressed: () {
+                        Navigator.pop(sheetContext);
+                        _fetchActivityTrails().then((_) {
+                          if (mounted) _showActivityTrailSheet();
+                        });
+                      },
+                      child: Icon(
+                        CupertinoIcons.refresh,
+                        color: primaryColor,
+                        size: 22,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Divider(height: 1, color: CupertinoColors.systemGrey5),
+
+              // Content
+              Expanded(child: _buildActivityTrailContent(primaryColor)),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildActivityTrailContent(Color primaryColor) {
+    if (_isLoadingTrails) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CupertinoActivityIndicator(radius: 16),
+            SizedBox(height: 12),
+            Text(
+              'Loading activity trails...',
+              style: TextStyle(color: CupertinoColors.systemGrey, fontSize: 14),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_activityTrails == null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              CupertinoIcons.exclamationmark_circle,
+              color: CupertinoColors.systemGrey,
+              size: 40,
+            ),
+            SizedBox(height: 12),
+            Text(
+              'Unable to load activity trails',
+              style: TextStyle(
+                color: CupertinoColors.systemGrey,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            SizedBox(height: 6),
+            Text(
+              'Please ensure you are authenticated',
+              style: TextStyle(
+                color: CupertinoColors.systemGrey2,
+                fontSize: 13,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_activityTrails!.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              CupertinoIcons.doc_text,
+              color: CupertinoColors.systemGrey,
+              size: 40,
+            ),
+            SizedBox(height: 12),
+            Text(
+              'No activity trails found',
+              style: TextStyle(
+                color: CupertinoColors.systemGrey,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.separated(
+      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      itemCount: _activityTrails!.length,
+      separatorBuilder: (_, __) =>
+          Divider(height: 1, color: CupertinoColors.systemGrey5),
+      itemBuilder: (context, index) {
+        final trail = _activityTrails![index];
+        return _buildTrailItem(trail, primaryColor);
+      },
+    );
+  }
+
+  Widget _buildTrailItem(Map<String, dynamic> trail, Color primaryColor) {
+    // Extract common fields with fallbacks
+    final action =
+        trail['action'] ?? trail['eventType'] ?? trail['type'] ?? 'Unknown';
+    final user = trail['userName'] ?? trail['user'] ?? trail['name'] ?? '';
+    final rawTimestamp =
+        trail['timestamp'] ??
+        trail['eventTimestamp'] ??
+        trail['createdAt'] ??
+        '';
+    final method = trail['method'] ?? trail['unlockMethod'] ?? '';
+
+    // Format timestamp
+    String formattedTime = '';
+    if (rawTimestamp.toString().isNotEmpty) {
+      try {
+        final dt = DateTime.parse(rawTimestamp.toString());
+        final local = dt.toLocal();
+        final months = [
+          'Jan',
+          'Feb',
+          'Mar',
+          'Apr',
+          'May',
+          'Jun',
+          'Jul',
+          'Aug',
+          'Sep',
+          'Oct',
+          'Nov',
+          'Dec',
+        ];
+        final hour = local.hour > 12
+            ? local.hour - 12
+            : (local.hour == 0 ? 12 : local.hour);
+        final amPm = local.hour >= 12 ? 'PM' : 'AM';
+        formattedTime =
+            '${local.day.toString().padLeft(2, '0')} ${months[local.month - 1]} ${local.year}, ${hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')} $amPm';
+      } catch (_) {
+        formattedTime = rawTimestamp.toString();
+      }
+    }
+
+    // Pick icon based on action
+    IconData iconData;
+    Color iconColor;
+    final actionLower = action.toString().toLowerCase();
+    if (actionLower.contains('unlock')) {
+      iconData = CupertinoIcons.lock_open_fill;
+      iconColor = Color(0xFF4CAF50);
+    } else if (actionLower.contains('lock')) {
+      iconData = CupertinoIcons.lock_fill;
+      iconColor = CupertinoColors.systemRed;
+    } else if (actionLower.contains('privacy')) {
+      iconData = CupertinoIcons.eye_slash_fill;
+      iconColor = CupertinoColors.systemOrange;
+    } else if (actionLower.contains('passage')) {
+      iconData = CupertinoIcons.arrow_right_arrow_left;
+      iconColor = CupertinoColors.systemBlue;
+    } else if (actionLower.contains('tamper')) {
+      iconData = CupertinoIcons.exclamationmark_triangle_fill;
+      iconColor = CupertinoColors.systemRed;
+    } else {
+      iconData = CupertinoIcons.clock;
+      iconColor = primaryColor;
+    }
+
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        children: [
+          // Icon
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: iconColor.withOpacity(0.12),
+              shape: BoxShape.circle,
+            ),
+            child: Center(child: Icon(iconData, color: iconColor, size: 20)),
+          ),
+          SizedBox(width: 14),
+          // Details
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  action.toString(),
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: CupertinoColors.black,
+                  ),
+                ),
+                if (user.toString().isNotEmpty) ...[
+                  SizedBox(height: 2),
+                  Text(
+                    user.toString(),
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: CupertinoColors.systemGrey,
+                    ),
+                  ),
+                ],
+                if (method.toString().isNotEmpty) ...[
+                  SizedBox(height: 2),
+                  Text(
+                    'via $method',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: CupertinoColors.systemGrey2,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          // Timestamp
+          if (formattedTime.isNotEmpty)
+            Text(
+              formattedTime,
+              style: TextStyle(
+                fontSize: 11,
+                color: CupertinoColors.systemGrey2,
+              ),
+            ),
         ],
       ),
     );

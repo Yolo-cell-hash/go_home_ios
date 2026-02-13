@@ -35,6 +35,7 @@ class BleController {
   BluetoothCharacteristic? _writeCharacteristic;
   StreamSubscription? _scanSubscription;
   StreamSubscription? _connectionStateSubscription;
+  StreamSubscription? _adapterStateSubscription;
 
   // Status Streams
   final _statusController = StreamController<String>.broadcast();
@@ -52,6 +53,8 @@ class BleController {
   BleConnectionStatus _connectionStatus = BleConnectionStatus.disconnected;
   bool _isScanning = false;
   bool _isConnected = false;
+  int _scanAttempt = 0;
+  static const int _maxScanAttempts = 3;
 
   // Getters
   bool get isConnected => _isConnected;
@@ -61,9 +64,49 @@ class BleController {
   void dispose() {
     _scanSubscription?.cancel();
     _connectionStateSubscription?.cancel();
+    _adapterStateSubscription?.cancel();
     _statusController.close();
     _connectionStatusController.close();
     _isScanningController.close();
+  }
+
+  /// Check if a device name matches the target.
+  /// Uses case-insensitive comparison and also checks if the name
+  /// starts with or contains the target, to handle BLE name variations.
+  bool _isTargetDevice(ScanResult result) {
+    final platformName = result.device.platformName.trim();
+    final advName = result.advertisementData.advName.trim();
+    final target = TARGET_DEVICE_NAME.toLowerCase();
+
+    // Check platformName (cached/system name)
+    if (platformName.isNotEmpty) {
+      final lower = platformName.toLowerCase();
+      if (lower == target || lower.startsWith(target)) {
+        return true;
+      }
+    }
+
+    // Check advertisement name (live broadcast name)
+    if (advName.isNotEmpty) {
+      final lower = advName.toLowerCase();
+      if (lower == target || lower.startsWith(target)) {
+        return true;
+      }
+    }
+
+    // Also check manufacturer/service data advertised service UUIDs
+    // Some devices advertise the service UUID before connection
+    final serviceUuids = result.advertisementData.serviceUuids;
+    for (final uuid in serviceUuids) {
+      if (uuid.toString().toLowerCase() == SERVICE_UUID.toLowerCase()) {
+        print(
+          '[BLE DEBUG] Device matched by service UUID: platformName="$platformName" advName="$advName"',
+        );
+        return true;
+      }
+    }
+
+    return false;
   }
 
   /// Initialize BLE - request permissions and start scanning
@@ -90,8 +133,9 @@ class BleController {
       _updateStatus("Bluetooth is off");
       _updateConnectionStatus(BleConnectionStatus.bluetoothOff);
 
-      // Listen for Bluetooth to be turned on
-      FlutterBluePlus.adapterState.listen((state) {
+      // Listen for Bluetooth to be turned on (cancel previous listener)
+      _adapterStateSubscription?.cancel();
+      _adapterStateSubscription = FlutterBluePlus.adapterState.listen((state) {
         print('[BLE DEBUG] Bluetooth adapter state changed: $state');
         if (state == BluetoothAdapterState.on &&
             !_isConnected &&
@@ -104,7 +148,6 @@ class BleController {
     }
 
     // On iOS, permissions are handled automatically by the OS when we try to scan
-    // The Info.plist already has the required usage descriptions
     // On Android, we need to request permissions explicitly
     if (!Platform.isIOS) {
       print('[BLE DEBUG] Android platform - requesting permissions');
@@ -125,13 +168,13 @@ class BleController {
       print('[BLE DEBUG] iOS platform - permissions handled by OS');
     }
 
-    // Start scanning - on iOS, the OS will prompt for permission automatically
+    // Reset scan attempt counter and start scanning
+    _scanAttempt = 0;
     print('[BLE DEBUG] Starting BLE scan...');
     startScan();
   }
 
   /// Force reconnect - resets state and starts fresh scan
-  /// Use this when navigating to BedStorageScreen to ensure fresh connection
   Future<void> forceReconnect() async {
     print('[BLE DEBUG] forceReconnect() called - resetting and scanning fresh');
     await resetController();
@@ -145,11 +188,15 @@ class BleController {
     // Cancel subscriptions
     await _scanSubscription?.cancel();
     await _connectionStateSubscription?.cancel();
+    _scanSubscription = null;
+    _connectionStateSubscription = null;
 
     // Stop any ongoing scan
     try {
-      await FlutterBluePlus.stopScan();
-      print('[BLE DEBUG] Stopped ongoing scan');
+      if (FlutterBluePlus.isScanningNow) {
+        await FlutterBluePlus.stopScan();
+        print('[BLE DEBUG] Stopped ongoing scan');
+      }
     } catch (e) {
       print('[BLE DEBUG] Error stopping scan: $e');
     }
@@ -169,6 +216,7 @@ class BleController {
     _writeCharacteristic = null;
     _isConnected = false;
     _isScanning = false;
+    _scanAttempt = 0;
     _connectionStatus = BleConnectionStatus.disconnected;
 
     _updateStatus("Ready to scan");
@@ -181,12 +229,12 @@ class BleController {
   /// Start scanning for the target BLE device
   void startScan() async {
     print(
-      '[BLE DEBUG] startScan() called - isConnected: $_isConnected, isScanning: $_isScanning',
+      '[BLE DEBUG] startScan() called - isConnected: $_isConnected, isScanning: $_isScanning, attempt: ${_scanAttempt + 1}/$_maxScanAttempts',
     );
 
     if (_isConnected) {
       print('[BLE DEBUG] Already connected - skipping scan');
-      _updateStatus("Connected to EB");
+      _updateStatus("Connected to $TARGET_DEVICE_NAME");
       _updateConnectionStatus(BleConnectionStatus.connected);
       return;
     }
@@ -202,34 +250,65 @@ class BleController {
     _updateStatus("Scanning for '$TARGET_DEVICE_NAME'...");
     print('[BLE DEBUG] Started scanning for device: $TARGET_DEVICE_NAME');
 
-    // Cancel any existing subscriptions
+    // Cancel any existing scan subscription
     await _scanSubscription?.cancel();
+    _scanSubscription = null;
 
+    // Stop any lingering scan
+    try {
+      if (FlutterBluePlus.isScanningNow) {
+        await FlutterBluePlus.stopScan();
+      }
+    } catch (e) {
+      print('[BLE DEBUG] Error stopping previous scan: $e');
+    }
+
+    bool deviceFound = false;
+
+    // Listen to scan results - NO name filter, we do our own matching
     _scanSubscription = FlutterBluePlus.onScanResults.listen((results) {
-      print('[BLE DEBUG] Scan results received: ${results.length} devices');
+      if (deviceFound) return;
+
+      print('[BLE DEBUG] Scan results batch: ${results.length} devices');
       for (ScanResult result in results) {
-        final deviceName = result.device.platformName;
-        print(
-          '[BLE DEBUG] Found device: "$deviceName" (looking for "$TARGET_DEVICE_NAME")',
-        );
-        if (deviceName == TARGET_DEVICE_NAME) {
+        final platformName = result.device.platformName;
+        final advName = result.advertisementData.advName;
+        final rssi = result.rssi;
+
+        // Log every device found for debugging
+        if (platformName.isNotEmpty || advName.isNotEmpty) {
           print(
-            '[BLE DEBUG] TARGET DEVICE FOUND! Stopping scan and connecting...',
+            '[BLE DEBUG] Found device: platformName="$platformName" advName="$advName" rssi=$rssi (looking for "$TARGET_DEVICE_NAME")',
+          );
+        }
+
+        if (_isTargetDevice(result)) {
+          deviceFound = true;
+          final matchedName = platformName.isNotEmpty ? platformName : advName;
+          print(
+            '[BLE DEBUG] ✅ TARGET DEVICE FOUND! name="$matchedName" rssi=$rssi — Stopping scan and connecting...',
           );
           FlutterBluePlus.stopScan();
           _updateIsScanning(false);
           _connectToDevice(result.device);
           _scanSubscription?.cancel();
+          _scanSubscription = null;
           return;
         }
       }
     });
 
     try {
-      print('[BLE DEBUG] Starting FlutterBluePlus scan with 15s timeout...');
+      print(
+        '[BLE DEBUG] Starting FlutterBluePlus scan (no name filter, 15s timeout)...',
+      );
+
+      // Scan WITHOUT withNames filter so we see ALL nearby devices.
+      // We filter in the listener above using _isTargetDevice().
+      // Also scan with the known service UUID as an additional strategy.
       await FlutterBluePlus.startScan(
         timeout: const Duration(seconds: 15),
-        withNames: [TARGET_DEVICE_NAME],
+        androidUsesFineLocation: true,
       );
       print('[BLE DEBUG] Scan started successfully');
     } catch (e) {
@@ -240,35 +319,56 @@ class BleController {
       return;
     }
 
-    // Wait for scan to complete
-    print('[BLE DEBUG] Waiting for scan timeout (16s)...');
+    // Wait for scan to wrap up (timeout + 1s buffer)
     await Future.delayed(const Duration(seconds: 16));
 
-    // If still scanning after timeout, device not found
-    if (_isScanning && !_isConnected && _connectedDevice == null) {
+    // If device wasn't found during this scan attempt
+    if (!deviceFound && !_isConnected && _connectedDevice == null) {
+      _scanAttempt++;
       print(
-        '[BLE DEBUG] Scan timeout - device "$TARGET_DEVICE_NAME" not found',
+        '[BLE DEBUG] Scan attempt $_scanAttempt/$_maxScanAttempts - device "$TARGET_DEVICE_NAME" not found',
       );
-      _updateIsScanning(false);
-      _updateStatus("Device not found");
-      _updateConnectionStatus(BleConnectionStatus.error);
+
+      if (_scanAttempt < _maxScanAttempts) {
+        // Auto-retry with a small delay
+        print('[BLE DEBUG] Auto-retrying scan in 2 seconds...');
+        _updateStatus(
+          "Retrying scan (${_scanAttempt + 1}/$_maxScanAttempts)...",
+        );
+        _updateIsScanning(false);
+        await Future.delayed(const Duration(seconds: 2));
+        if (!_isConnected) {
+          startScan();
+        }
+      } else {
+        print(
+          '[BLE DEBUG] All $_maxScanAttempts scan attempts exhausted — device not found',
+        );
+        _updateIsScanning(false);
+        _updateStatus("Device '$TARGET_DEVICE_NAME' not found");
+        _updateConnectionStatus(BleConnectionStatus.error);
+      }
     }
   }
 
   /// Connect to a discovered BLE device
   Future<void> _connectToDevice(BluetoothDevice device) async {
+    final deviceName = device.platformName.isNotEmpty
+        ? device.platformName
+        : device.remoteId.str;
     print(
-      '[BLE DEBUG] _connectToDevice() - Attempting to connect to: ${device.platformName}',
+      '[BLE DEBUG] _connectToDevice() - Attempting to connect to: $deviceName',
     );
     _updateConnectionStatus(BleConnectionStatus.connecting);
-    _updateStatus("Connecting to ${device.platformName}...");
+    _updateStatus("Connecting to $deviceName...");
 
     try {
       print('[BLE DEBUG] Calling device.connect() with 10s timeout...');
       await device.connect(
         autoConnect: false,
-        timeout: const Duration(seconds: 10),
         license: License.free,
+        timeout: const Duration(seconds: 10),
+        mtu: null,
       );
       print('[BLE DEBUG] device.connect() completed successfully');
 
@@ -302,6 +402,16 @@ class BleController {
   Future<void> _discoverServices(BluetoothDevice device) async {
     print('[BLE DEBUG] _discoverServices() - Starting service discovery...');
     try {
+      // On iOS, request a smaller MTU first for reliability
+      if (Platform.isIOS) {
+        try {
+          await device.requestMtu(512);
+          print('[BLE DEBUG] MTU requested on iOS');
+        } catch (e) {
+          print('[BLE DEBUG] MTU request failed (non-critical): $e');
+        }
+      }
+
       List<BluetoothService> services = await device.discoverServices();
       print('[BLE DEBUG] Discovered ${services.length} services');
 
@@ -312,13 +422,15 @@ class BleController {
         if (service.uuid.toString().toLowerCase() ==
             SERVICE_UUID.toLowerCase()) {
           print(
-            '[BLE DEBUG] TARGET SERVICE FOUND! Looking for characteristic...',
+            '[BLE DEBUG] ✅ TARGET SERVICE FOUND! Looking for characteristic...',
           );
           for (var c in service.characteristics) {
-            print('[BLE DEBUG] Characteristic UUID: ${c.uuid}');
+            print(
+              '[BLE DEBUG]   Characteristic UUID: ${c.uuid}, properties: ${c.properties}',
+            );
             if (c.uuid.toString().toLowerCase() ==
                 CHARACTERISTIC_UUID.toLowerCase()) {
-              print('[BLE DEBUG] TARGET CHARACTERISTIC FOUND!');
+              print('[BLE DEBUG] ✅ TARGET CHARACTERISTIC FOUND!');
               foundChar = c;
               break;
             }
@@ -330,12 +442,20 @@ class BleController {
         _connectedDevice = device;
         _writeCharacteristic = foundChar;
         _isConnected = true;
+        _scanAttempt = 0; // Reset on successful connection
         _updateConnectionStatus(BleConnectionStatus.connected);
-        _updateStatus("Connected to EB");
-        print('[BLE DEBUG] SUCCESS - Connected and ready to send commands');
+        _updateStatus("Connected to $TARGET_DEVICE_NAME");
+        print('[BLE DEBUG] ✅ SUCCESS - Connected and ready to send commands');
       } else {
-        print('[BLE DEBUG] ERROR - Target service/characteristic not found');
-        _updateStatus("Service not found");
+        print('[BLE DEBUG] ❌ ERROR - Target service/characteristic not found');
+        print('[BLE DEBUG] Available services:');
+        for (var service in services) {
+          print('[BLE DEBUG]   Service: ${service.uuid}');
+          for (var c in service.characteristics) {
+            print('[BLE DEBUG]     Char: ${c.uuid}');
+          }
+        }
+        _updateStatus("Service not found on device");
         _updateConnectionStatus(BleConnectionStatus.error);
         await device.disconnect();
       }
@@ -362,14 +482,28 @@ class BleController {
     try {
       final bytes = utf8.encode(command);
       print('[BLE DEBUG] Writing bytes: $bytes ("$command")');
-      await _writeCharacteristic!.write(bytes);
-      print('[BLE DEBUG] SUCCESS - Command "$command" sent successfully');
+      await _writeCharacteristic!.write(bytes, withoutResponse: false);
+      print('[BLE DEBUG] ✅ SUCCESS - Command "$command" sent successfully');
       _updateStatus("Sent: $command");
       return true;
     } catch (e) {
-      print('[BLE DEBUG] FAILED to send command "$command": $e');
-      _updateStatus("Send failed: $e");
-      return false;
+      print('[BLE DEBUG] ❌ FAILED to send command "$command": $e');
+
+      // If write fails, the connection may be stale — try withoutResponse
+      try {
+        print('[BLE DEBUG] Retrying write withoutResponse...');
+        final bytes = utf8.encode(command);
+        await _writeCharacteristic!.write(bytes, withoutResponse: true);
+        print(
+          '[BLE DEBUG] ✅ SUCCESS (withoutResponse) - Command "$command" sent',
+        );
+        _updateStatus("Sent: $command");
+        return true;
+      } catch (e2) {
+        print('[BLE DEBUG] ❌ FAILED second attempt: $e2');
+        _updateStatus("Send failed");
+        return false;
+      }
     }
   }
 
@@ -377,6 +511,8 @@ class BleController {
   Future<void> disconnect() async {
     await _scanSubscription?.cancel();
     await _connectionStateSubscription?.cancel();
+    _scanSubscription = null;
+    _connectionStateSubscription = null;
     if (_connectedDevice != null) {
       await _connectedDevice!.disconnect();
     }
@@ -390,6 +526,7 @@ class BleController {
   /// Retry scanning for the device
   void retryScan() {
     if (!_isScanning) {
+      _scanAttempt = 0; // Reset attempts on manual retry
       startScan();
     }
   }

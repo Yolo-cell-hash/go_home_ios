@@ -372,16 +372,21 @@ class WebApi {
     }
   }
 
-  Future<void> getActivityTrails(BuildContext context) async {
-    _safeShowLoader(context);
-
-    if (!context.mounted) return;
+  Future<List<Map<String, dynamic>>?> getActivityTrails(
+    BuildContext context,
+  ) async {
+    if (!context.mounted) return null;
 
     String accessToken = Provider.of<AppState>(
       context,
       listen: false,
     ).accessToken;
     String lockID = Provider.of<AppState>(context, listen: false).lockID;
+
+    if (accessToken.isEmpty || lockID.isEmpty) {
+      print('[DEBUG] getActivityTrails: Missing accessToken or lockID');
+      return null;
+    }
 
     try {
       response = await http.get(
@@ -404,18 +409,29 @@ class WebApi {
         response.statusCode == 200,
       );
 
-      _safeHideLoader(context);
-
       if (response.statusCode == 200) {
-        _showToast('Activity trails retrieved successfully!', true);
+        final decoded = jsonDecode(response.body);
+        if (decoded is List) {
+          return decoded.cast<Map<String, dynamic>>();
+        } else if (decoded is Map && decoded.containsKey('data')) {
+          final data = decoded['data'];
+          if (data is List) {
+            return data.cast<Map<String, dynamic>>();
+          }
+        }
+        // Fallback: wrap single map in a list
+        if (decoded is Map) {
+          return [Map<String, dynamic>.from(decoded)];
+        }
+        return [];
       } else {
         _showToast('Failed to get activity trails', false);
+        return null;
       }
     } catch (e) {
-      print('Error making POST request: $e');
+      print('Error fetching activity trails: $e');
       _addLog('Get Activity Trails', 0, 'Error: $e', false);
-      _showToast('Error: $e', false);
-      _safeHideLoader(context);
+      return null;
     }
   }
 
