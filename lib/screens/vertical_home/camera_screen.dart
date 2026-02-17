@@ -45,7 +45,10 @@ class _CameraScreenState extends State<CameraScreen> {
   void dispose() {
     print('[CameraScreen] dispose called');
     _eventSubscription?.cancel();
+    // Full cleanup — stops stream AND clears the wrapper/SDK state
+    // so a fresh previewVC can be created on next open
     JACameraService.stopPlay();
+    JACameraService.dispose();
     super.dispose();
   }
 

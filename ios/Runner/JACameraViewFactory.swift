@@ -300,8 +300,13 @@ class JACameraView: NSObject, FlutterPlatformView {
         cleanupTimer?.invalidate()
         cleanupTimer = nil
         
+        // Stop streaming
         previewVC?.openVideoStream(false)
         
+        // Clear wrapper from plugin so next open gets a fresh one
+        plugin?.setCameraWrapper(nil)
+        
+        // Remove VC from parent
         if let vc = previewVC {
             vc.willMove(toParent: nil)
             vc.view.removeFromSuperview()
@@ -309,5 +314,6 @@ class JACameraView: NSObject, FlutterPlatformView {
         }
         
         previewVC = nil
+        print("[JACameraView-Native] deinit - cleanup complete")
     }
 }
