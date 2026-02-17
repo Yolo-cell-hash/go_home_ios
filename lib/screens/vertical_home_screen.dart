@@ -40,13 +40,25 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
     'automation-flags',
   );
 
+  // Firebase reference for dev_env/ack monitoring
+  final DatabaseReference _ackRef = FirebaseDatabase.instance.ref(
+    'dev_env/ack',
+  );
+
   // Stream subscription for real-time Firebase updates
   StreamSubscription<DatabaseEvent>? _firebaseSubscription;
   StreamSubscription<DatabaseEvent>? _fireAlertSubscription;
   StreamSubscription<DatabaseEvent>? _windowAlertSubscription;
+  StreamSubscription<DatabaseEvent>? _ackSubscription;
 
   // Flag to track if initial data has been loaded
   bool _isLoading = true;
+
+  // Active user name parsed from /dev_env/ack
+  String? _activeUserName;
+
+  // Known users with avatar images
+  static const Set<String> _knownUsers = {'deodatta', 'parag', 'sd', 'jinay'};
 
   // Fire and window alert states
   bool _isFireAlert = false;
@@ -188,6 +200,7 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
     print('[DEBUG] VerticalHomeScreen initState - fetching Firebase data');
     _fetchFirebaseState();
     _setupFirebaseListener();
+    _setupAckListener();
     // NOTE: BLE is intentionally NOT initialized here
     // BLE initialization happens in BedStorageScreen when user navigates there
   }
@@ -261,11 +274,50 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
     });
   }
 
+  /// Setup real-time listener for /dev_env/ack to detect access-granted messages
+  void _setupAckListener() {
+    _ackSubscription = _ackRef.onValue.listen((event) {
+      if (event.snapshot.exists && mounted) {
+        final value = event.snapshot.value?.toString() ?? '';
+        print('[DEBUG] ACK value received: $value');
+        final parsedUser = _parseAckUser(value);
+        if (parsedUser != _activeUserName) {
+          setState(() {
+            _activeUserName = parsedUser;
+          });
+          print('[DEBUG] Active user updated to: $_activeUserName');
+        }
+      } else if (mounted) {
+        setState(() {
+          _activeUserName = null;
+        });
+      }
+    });
+  }
+
+  /// Parse the ACK string to extract a known username (case-insensitive)
+  /// Expected format: "Success-Access granted to <username>"
+  String? _parseAckUser(String ackValue) {
+    final regex = RegExp(
+      r'success.*access\s+granted\s+to\s+(\w+)',
+      caseSensitive: false,
+    );
+    final match = regex.firstMatch(ackValue);
+    if (match != null) {
+      final name = match.group(1)!.toLowerCase();
+      if (_knownUsers.contains(name)) {
+        return name;
+      }
+    }
+    return null;
+  }
+
   @override
   void dispose() {
     _firebaseSubscription?.cancel();
     _fireAlertSubscription?.cancel();
     _windowAlertSubscription?.cancel();
+    _ackSubscription?.cancel();
     _vibrationTimer?.cancel();
     _pageController.dispose();
     super.dispose();
@@ -540,6 +592,7 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
                 iconStatus: _welcomeIconStatus,
                 onIconTap: _handleWelcomeIconTap,
                 onIconLongPress: _handleWelcomeIconLongPress,
+                activeUserName: _activeUserName,
               ),
               // Screen 2: Home Scenes & Spaces
               HomeScenesScreenWidget(

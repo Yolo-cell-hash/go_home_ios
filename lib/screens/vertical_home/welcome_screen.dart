@@ -3,6 +3,7 @@
 // Made responsive for iPhone testing while optimized for iPad production
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'utils.dart';
 
@@ -13,12 +14,22 @@ class WelcomeScreenWidget extends StatelessWidget {
   final Function(int index) onIconTap; // Callback when icon is tapped
   final Function(int index)?
   onIconLongPress; // Callback when icon is long pressed
+  final String? activeUserName; // Active user from Firebase ACK
+
+  // Map of known usernames to their avatar image paths
+  static const Map<String, String> userAvatars = {
+    'deodatta': 'images/deodatta.jpeg',
+    'parag': 'images/parag.jpeg',
+    'sd': 'images/sd.jpeg',
+    'jinay': 'images/jinay.jpeg',
+  };
 
   const WelcomeScreenWidget({
     super.key,
     required this.iconStatus,
     required this.onIconTap,
     this.onIconLongPress,
+    this.activeUserName,
   });
 
   // Check if this is a small screen (iPhone in portrait)
@@ -61,13 +72,30 @@ class WelcomeScreenWidget extends StatelessWidget {
     );
   }
 
-  /// Builds the top navbar with logo and location
+  // Display name overrides (e.g. 'sd' -> 'Sayali')
+  static const Map<String, String> _displayNames = {'sd': 'Sayali'};
+
+  /// Get the display-friendly name for a username
+  String _displayName(String name) {
+    final key = name.toLowerCase();
+    if (_displayNames.containsKey(key)) return _displayNames[key]!;
+    // Default: title-case
+    if (name.isEmpty) return name;
+    return name[0].toUpperCase() + name.substring(1).toLowerCase();
+  }
+
+  /// Builds the top navbar with logo and location/user display
   Widget _buildNavbar(Color primaryColor, bool isSmallScreen) {
     print('[DEBUG] WelcomeScreen: Building navbar');
     final hPadding = isSmallScreen ? 20.0 : 40.0;
     final vPadding = isSmallScreen ? 15.0 : 30.0;
     final logoHeight = isSmallScreen ? 50.0 : 75.0;
     final fontSize = isSmallScreen ? 16.0 : 22.0;
+    final avatarRadius = isSmallScreen ? 18.0 : 22.0;
+
+    final hasActiveUser =
+        activeUserName != null &&
+        userAvatars.containsKey(activeUserName!.toLowerCase());
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: hPadding, vertical: vPadding),
@@ -75,32 +103,54 @@ class WelcomeScreenWidget extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Image.asset('images/new_main_logo.png', height: logoHeight),
-          Row(
-            children: [
-              Text(
-                'Mumbai Home',
-                style: TextStyle(
-                  fontFamily: 'GEG',
-                  fontSize: fontSize,
-                  fontWeight: FontWeight.w400,
-                  color: primaryColor,
+          hasActiveUser
+              ? Row(
+                  children: [
+                    Text(
+                      _displayName(activeUserName!),
+                      style: TextStyle(
+                        fontFamily: 'GEG',
+                        fontSize: fontSize,
+                        fontWeight: FontWeight.w400,
+                        color: primaryColor,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+
+                    CircleAvatar(
+                      radius: avatarRadius,
+                      backgroundImage: AssetImage(
+                        userAvatars[activeUserName!.toLowerCase()]!,
+                      ),
+                    ),
+                  ],
+                )
+              : Row(
+                  children: [
+                    Text(
+                      'Mumbai Home',
+                      style: TextStyle(
+                        fontFamily: 'GEG',
+                        fontSize: fontSize,
+                        fontWeight: FontWeight.w400,
+                        color: primaryColor,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: primaryColor, width: 1.5),
+                      ),
+                      child: Icon(
+                        CupertinoIcons.chevron_down,
+                        size: 14,
+                        color: primaryColor,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: primaryColor, width: 1.5),
-                ),
-                child: Icon(
-                  CupertinoIcons.chevron_down,
-                  size: 14,
-                  color: primaryColor,
-                ),
-              ),
-            ],
-          ),
         ],
       ),
     );
@@ -160,7 +210,7 @@ class WelcomeScreenWidget extends StatelessWidget {
         children: [
           // Status text at top
           Text(
-            'Security System is Armed Away.',
+            'Locking System is Armed Away.',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontFamily: 'GEG',
