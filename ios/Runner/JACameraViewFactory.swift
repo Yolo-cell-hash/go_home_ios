@@ -141,8 +141,6 @@ class JACameraView: NSObject, FlutterPlatformView {
     
     // Timer for periodic cleanup
     private var cleanupTimer: Timer?
-    // Overlay layer for extracted views (video + PTZ)
-    private var overlayView: UIView?
     
     private func performSdkSetup() {
         print("[JACameraView-Native] *** performSdkSetup started ***")
@@ -200,16 +198,11 @@ class JACameraView: NSObject, FlutterPlatformView {
                 self.containerView.addSubview(vc.view)
             }
             
-            // Create overlay view on top of SDK view — this is where we show video + PTZ cleanly
-            let overlay = UIView(frame: bounds)
-            overlay.backgroundColor = .clear
-            overlay.clipsToBounds = true
-            overlay.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-            overlay.isUserInteractionEnabled = true
-            self.containerView.addSubview(overlay)
-            self.overlayView = overlay
-            
-            print("[JACameraView-Native] SDK view height set to \(sdkHeight), overlay added")
+            // Register wrapper with the plugin so PTZ commands work
+            let wrapper = JACameraWrapper()
+            wrapper.setPreviewViewController(vc)
+            self.plugin?.setCameraWrapper(wrapper)
+            print("[JACameraView-Native] SDK view height set to \(sdkHeight), wrapper registered for PTZ")
             
             // Start stream
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
@@ -232,12 +225,11 @@ class JACameraView: NSObject, FlutterPlatformView {
         }
     }
     
-    /// Enforce clean layout: hide everything except video player in the container bounds,
-    /// and position PTZ circle as overlay
+    /// Enforce clean layout: ensure video player fills the visible container area.
+    /// All SDK panels (toolbars, PTZ, presets) overflow below and get clipped.
     private func enforceCleanLayout() {
         let bounds = containerView.bounds
         guard bounds.width > 0 && bounds.height > 0 else { return }
-        guard let overlay = overlayView else { return }
         
         // Ensure SDK view stays tall (SDK may try to resize it)
         if let sdkView = previewVC?.view, sdkView.frame.height < bounds.height * 2 {
@@ -245,64 +237,28 @@ class JACameraView: NSObject, FlutterPlatformView {
             sdkView.frame = CGRect(x: 0, y: 0, width: bounds.width, height: sdkHeight)
         }
         
-        // Ensure overlay is on top and correctly sized
-        overlay.frame = bounds
-        containerView.bringSubviewToFront(overlay)
-        
-        // Find video player and PTZ circle in the SDK hierarchy
+        // Find video player in the SDK hierarchy
         var videoPlayerView: UIView?
-        var ptzCircleView: UIView?
         
-        func findViews(in view: UIView) {
+        func findVideoPlayer(in view: UIView) {
             let className = String(describing: type(of: view))
             if className == "JAMultivideosPlayer" {
                 videoPlayerView = view
-            }
-            if className == "JACircleDirectionView" {
-                ptzCircleView = view
+                return
             }
             for sub in view.subviews {
-                findViews(in: sub)
+                findVideoPlayer(in: sub)
             }
         }
         
         if let sdkView = previewVC?.view {
-            findViews(in: sdkView)
+            findVideoPlayer(in: sdkView)
         }
         
         // If we found the video player, ensure it fills the visible area
         if let videoPlayer = videoPlayerView {
-            // Force the video player to fill the container bounds
-            // Even though it's deep in the SDK hierarchy, setting its frame
-            // makes the video render at the right size
             videoPlayer.frame = CGRect(x: 0, y: 0, width: bounds.width, height: bounds.height)
-            
-            // Also resize nested video views
             resizeNestedVideoViews(in: videoPlayer, to: bounds.size)
-        }
-        
-        // If PTZ circle is found and NOT already in overlay, move it there
-        if let ptzCircle = ptzCircleView {
-            let ptzSize: CGFloat = min(bounds.width * 0.30, bounds.height * 0.50, 200)
-            let ptzFrame = CGRect(
-                x: 20,
-                y: bounds.height - ptzSize - 30,
-                width: ptzSize,
-                height: ptzSize
-            )
-            
-            if ptzCircle.superview !== overlay {
-                // Move PTZ circle from SDK hierarchy to our clean overlay
-                ptzCircle.removeFromSuperview()
-                ptzCircle.frame = ptzFrame
-                ptzCircle.alpha = 0.85
-                overlay.addSubview(ptzCircle)
-                print("[JACameraView-Native] PTZ circle moved to overlay, frame: \(ptzFrame)")
-            } else {
-                // Already in overlay, just ensure frame is correct
-                ptzCircle.frame = ptzFrame
-            }
-            ptzCircle.isHidden = false
         }
     }
     

@@ -211,4 +211,15 @@
     _isInitialized = NO;
 }
 
+- (void)setPreviewViewController:(id)previewVC {
+    NSLog(@"[JACameraWrapper] *** setPreviewViewController called ***");
+    if ([previewVC isKindOfClass:[JAPreviewMultipleViewController class]]) {
+        _previewVC = (JAPreviewMultipleViewController *)previewVC;
+        _isInitialized = YES;
+        NSLog(@"[JACameraWrapper] previewVC set successfully, PTZ ready");
+    } else {
+        NSLog(@"[JACameraWrapper] ERROR: invalid previewVC type: %@", NSStringFromClass([previewVC class]));
+    }
+}
+
 @end

@@ -52,6 +52,9 @@ typedef NS_ENUM(NSInteger, JACameraWrapperPTZDirection) {
 /// Capture screenshot
 - (nullable NSString *)captureScreenshot;
 
+/// Set an externally created preview VC (used by JACameraView)
+- (void)setPreviewViewController:(nonnull id)previewVC;
+
 /// Cleanup resources
 - (void)dispose;
 

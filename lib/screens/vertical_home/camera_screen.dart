@@ -8,6 +8,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' show Colors, BoxShadow;
 import 'package:godrej_home/widgets/navbar_setup.dart';
 import 'package:godrej_home/widgets/ja_camera_view.dart';
+import 'package:godrej_home/widgets/ptz_controller.dart';
 import 'package:godrej_home/services/ja_camera_service.dart';
 
 /// CCTV Camera control screen with live video feed
@@ -129,7 +130,6 @@ class _CameraScreenState extends State<CameraScreen> {
       backgroundColor: CupertinoColors.systemBackground,
       child: Column(
         children: [
-          // Use existing NavbarSetup widget
           NavbarSetup(theme: theme, imgPath: 'camera', label: 'CCTV Camera'),
 
           // Main content area
@@ -138,9 +138,9 @@ class _CameraScreenState extends State<CameraScreen> {
               color: CupertinoColors.systemBackground,
               padding: const EdgeInsets.only(
                 left: 60.0,
-                right: 60.0,
-                top: 30.0,
-                bottom: 30.0,
+                right: 40.0,
+                top: 25.0,
+                bottom: 25.0,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -175,14 +175,117 @@ class _CameraScreenState extends State<CameraScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 15),
 
-                  // Video feed fills remaining space
-                  Expanded(child: _buildVideoFeedSection(primaryColor)),
+                  // Main row: Video feed + PTZ panel
+                  Expanded(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Left: Video feed
+                        Expanded(
+                          flex: 4,
+                          child: _buildVideoFeedSection(primaryColor),
+                        ),
+                        const SizedBox(width: 20),
+
+                        // Right: PTZ Controls panel
+                        SizedBox(
+                          width: 220,
+                          child: _buildPTZPanel(primaryColor),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  /// Builds the PTZ control panel on the right side
+  Widget _buildPTZPanel(Color primaryColor) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFF5F0EB),
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          const SizedBox(height: 18),
+
+          // Header
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                CupertinoIcons.gamecontroller_fill,
+                color: primaryColor,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'PTZ Control',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: primaryColor,
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 6),
+
+          // Status indicator
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            decoration: BoxDecoration(
+              color: _isConnected
+                  ? CupertinoColors.activeGreen.withOpacity(0.15)
+                  : CupertinoColors.systemRed.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              _isConnected ? '● Connected' : '○ Offline',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                color: _isConnected
+                    ? CupertinoColors.activeGreen
+                    : CupertinoColors.systemRed,
+              ),
+            ),
+          ),
+
+          // PTZ D-pad — centered in remaining space
+          Expanded(
+            child: Center(
+              child: Opacity(
+                opacity: _isConnected ? 1.0 : 0.4,
+                child: PTZController(
+                  size: 160,
+                  backgroundColor: primaryColor.withOpacity(0.12),
+                  buttonColor: primaryColor.withOpacity(0.25),
+                  activeButtonColor: primaryColor,
+                  iconColor: primaryColor,
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 12),
         ],
       ),
     );
