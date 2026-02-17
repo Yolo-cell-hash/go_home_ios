@@ -141,9 +141,9 @@ class _CameraScreenState extends State<CameraScreen> {
               color: CupertinoColors.systemBackground,
               padding: const EdgeInsets.only(
                 left: 60.0,
-                right: 40.0,
-                top: 25.0,
-                bottom: 25.0,
+                right: 0.0,
+                top: 30.0,
+                bottom: 30.0,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -178,25 +178,22 @@ class _CameraScreenState extends State<CameraScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 15),
+                  const SizedBox(height: 30),
 
                   // Main row: Video feed + PTZ panel
                   Expanded(
                     child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // Left: Video feed
                         Expanded(
-                          flex: 4,
+                          flex: 5,
                           child: _buildVideoFeedSection(primaryColor),
                         ),
-                        const SizedBox(width: 20),
+                        const SizedBox(width: 30),
 
                         // Right: PTZ Controls panel
-                        SizedBox(
-                          width: 220,
-                          child: _buildPTZPanel(primaryColor),
-                        ),
+                        Expanded(flex: 3, child: _buildPTZPanel(primaryColor)),
                       ],
                     ),
                   ),
@@ -211,85 +208,81 @@ class _CameraScreenState extends State<CameraScreen> {
 
   /// Builds the PTZ control panel on the right side
   Widget _buildPTZPanel(Color primaryColor) {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFFF5F0EB),
-        borderRadius: BorderRadius.circular(22),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+    return Align(
+      alignment: Alignment.center,
+      child: Container(
+        decoration: const BoxDecoration(
+          color: Color(0xFFF5F0EB),
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(25),
+            bottomLeft: Radius.circular(25),
           ),
-        ],
-      ),
-      child: Column(
-        children: [
-          const SizedBox(height: 18),
-
-          // Header
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                CupertinoIcons.gamecontroller_fill,
-                color: primaryColor,
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'PTZ Control',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
+        ),
+        padding: const EdgeInsets.only(left: 20, top: 20, bottom: 20, right: 0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Header
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  CupertinoIcons.gamecontroller_fill,
                   color: primaryColor,
-                  letterSpacing: 0.3,
+                  size: 20,
                 ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 6),
-
-          // Status indicator
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            decoration: BoxDecoration(
-              color: _isConnected
-                  ? CupertinoColors.activeGreen.withOpacity(0.15)
-                  : CupertinoColors.systemRed.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(10),
+                const SizedBox(width: 8),
+                Text(
+                  'PTZ Control',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: primaryColor,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+              ],
             ),
-            child: Text(
-              _isConnected ? '● Connected' : '○ Offline',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
+
+            const SizedBox(height: 10.0),
+
+            // Status indicator
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
                 color: _isConnected
-                    ? CupertinoColors.activeGreen
-                    : CupertinoColors.systemRed,
+                    ? CupertinoColors.activeGreen.withOpacity(0.15)
+                    : CupertinoColors.systemRed.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(10),
               ),
-            ),
-          ),
-
-          // PTZ D-pad — centered in remaining space
-          Expanded(
-            child: Center(
-              child: Opacity(
-                opacity: _isConnected ? 1.0 : 0.4,
-                child: PTZController(
-                  size: 160,
-                  backgroundColor: primaryColor.withOpacity(0.12),
-                  buttonColor: primaryColor.withOpacity(0.25),
-                  activeButtonColor: primaryColor,
-                  iconColor: primaryColor,
+              child: Text(
+                _isConnected ? '● Connected' : '○ Offline',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  color: _isConnected
+                      ? CupertinoColors.activeGreen
+                      : CupertinoColors.systemRed,
                 ),
               ),
             ),
-          ),
 
-          const SizedBox(height: 12),
-        ],
+            const SizedBox(height: 20.0),
+
+            // PTZ D-pad
+            Opacity(
+              opacity: _isConnected ? 1.0 : 0.4,
+              child: PTZController(
+                size: 160,
+                backgroundColor: primaryColor.withOpacity(0.12),
+                buttonColor: primaryColor.withOpacity(0.25),
+                activeButtonColor: primaryColor,
+                iconColor: primaryColor,
+              ),
+            ),
+            SizedBox(height: 25.0),
+          ],
+        ),
       ),
     );
   }
