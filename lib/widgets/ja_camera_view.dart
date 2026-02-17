@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -104,7 +106,11 @@ class _JACameraViewState extends State<JACameraView> {
               creationParams: creationParams,
               creationParamsCodec: const StandardMessageCodec(),
               onPlatformViewCreated: _onPlatformViewCreated,
-              gestureRecognizers: const {},
+              gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
+                Factory<OneSequenceGestureRecognizer>(
+                  () => EagerGestureRecognizer(),
+                ),
+              },
             ),
           ),
         );

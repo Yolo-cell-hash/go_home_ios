@@ -5,7 +5,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' show Colors, BoxShadow;
 import 'package:godrej_home/widgets/navbar_setup.dart';
 import 'package:godrej_home/widgets/ja_camera_view.dart';
 import 'package:godrej_home/services/ja_camera_service.dart';
@@ -120,54 +120,6 @@ class _CameraScreenState extends State<CameraScreen> {
     });
   }
 
-  void _showConnectionFailedAlert() {
-    showCupertinoDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return CupertinoAlertDialog(
-          title: const Text('Connection Failed'),
-          content: Text(
-            _errorMessage ??
-                'Unable to connect to camera. Please check your network connection and try again.',
-          ),
-          actions: [
-            CupertinoDialogAction(
-              child: const Text('Cancel'),
-              onPressed: () {
-                Navigator.of(context).pop();
-                Navigator.of(context).pop(); // Go back to previous screen
-              },
-            ),
-            CupertinoDialogAction(
-              isDefaultAction: true,
-              child: const Text('Retry'),
-              onPressed: () {
-                Navigator.of(context).pop();
-                _initializeCamera();
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _showInfoAlert(String title, String message) {
-    showCupertinoDialog(
-      context: context,
-      builder: (context) => CupertinoAlertDialog(
-        title: Text(title),
-        content: Text(message),
-        actions: [
-          CupertinoDialogAction(
-            child: const Text('OK'),
-            onPressed: () => Navigator.of(context).pop(),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final primaryColor = CupertinoTheme.of(context).primaryColor;
@@ -186,7 +138,7 @@ class _CameraScreenState extends State<CameraScreen> {
               color: CupertinoColors.systemBackground,
               padding: const EdgeInsets.only(
                 left: 60.0,
-                right: 0.0,
+                right: 60.0,
                 top: 30.0,
                 bottom: 30.0,
               ),
@@ -223,28 +175,10 @@ class _CameraScreenState extends State<CameraScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 20),
 
-                  // Main content row
-                  Expanded(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Left section: Video feed
-                        Expanded(
-                          flex: 5,
-                          child: _buildVideoFeedSection(primaryColor),
-                        ),
-                        const SizedBox(width: 30),
-
-                        // Right section: Control buttons
-                        Expanded(
-                          flex: 3,
-                          child: _buildControlsSection(primaryColor),
-                        ),
-                      ],
-                    ),
-                  ),
+                  // Video feed fills remaining space
+                  Expanded(child: _buildVideoFeedSection(primaryColor)),
                 ],
               ),
             ),
@@ -399,122 +333,6 @@ class _CameraScreenState extends State<CameraScreen> {
             Text(
               'No Video Feed',
               style: TextStyle(color: Colors.grey[500], fontSize: 18),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildControlsSection(Color primaryColor) {
-    return Align(
-      alignment: Alignment.centerRight,
-      child: Container(
-        height: 400.0,
-        decoration: const BoxDecoration(
-          color: Color(0xFFF5F0EB),
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(25),
-            bottomLeft: Radius.circular(25),
-          ),
-        ),
-        padding: const EdgeInsets.only(
-          left: 20,
-          top: 50,
-          bottom: 50.0,
-          right: 0,
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Single row: Watch Video & PTZ Control
-            Expanded(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _buildElegantButton(
-                    icon: CupertinoIcons.camera_fill,
-                    label: 'Watch\nVideo',
-                    primaryColor: primaryColor,
-                    isEnabled: true,
-                    onTap: () {
-                      // Resume feed if paused
-                      if (!_isConnected) {
-                        _initializeCamera();
-                      } else {
-                        _showInfoAlert(
-                          'Live Feed',
-                          'Camera feed is currently active.',
-                        );
-                      }
-                    },
-                  ),
-                  _buildElegantButton(
-                    icon: Icons.control_camera,
-                    label: 'PTZ\nControl',
-                    primaryColor: primaryColor,
-                    isEnabled: _isConnected,
-                    onTap: () {
-                      _showInfoAlert(
-                        'PTZ Control',
-                        'Use the on-screen controls in the video feed to pan, tilt, and zoom the camera.\n\nThe SDK provides built-in PTZ controls.',
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildElegantButton({
-    IconData? icon,
-    String? imagePath,
-    required String label,
-    required Color primaryColor,
-    required VoidCallback onTap,
-    bool isLoading = false,
-    bool isEnabled = true,
-  }) {
-    final effectiveColor = isEnabled
-        ? primaryColor
-        : CupertinoColors.systemGrey3;
-
-    return GestureDetector(
-      onTap: isEnabled ? onTap : null,
-      child: Opacity(
-        opacity: isEnabled ? 1.0 : 0.5,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 70,
-              height: 70,
-              decoration: BoxDecoration(
-                color: effectiveColor,
-                shape: BoxShape.circle,
-              ),
-              child: isLoading
-                  ? const CupertinoActivityIndicator(color: Colors.white)
-                  : (imagePath != null
-                        ? Padding(
-                            padding: const EdgeInsets.all(18.0),
-                            child: Image.asset(imagePath, color: Colors.white),
-                          )
-                        : Icon(icon, color: Colors.white, size: 32)),
-            ),
-            const SizedBox(height: 15),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 16,
-                color: effectiveColor,
-                fontWeight: FontWeight.w500,
-              ),
             ),
           ],
         ),

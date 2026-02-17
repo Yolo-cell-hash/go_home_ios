@@ -139,45 +139,15 @@ class JACameraView: NSObject, FlutterPlatformView {
         performSdkSetup()
     }
     
+    // Timer for periodic cleanup
+    private var cleanupTimer: Timer?
+    // Overlay layer for extracted views (video + PTZ)
+    private var overlayView: UIView?
+    
     private func performSdkSetup() {
         print("[JACameraView-Native] *** performSdkSetup started ***")
         
-        // DEBUG: Verify bundle resources before SDK initialization
-        print("[JACameraView-Native] *** Bundle Resource Verification ***")
-        let bundle = Bundle.main
-        print("[JACameraView-Native] Main bundle path: \(bundle.bundlePath)")
-        
-        // Check for General.json
-        if let generalPath = bundle.path(forResource: "General", ofType: "json") {
-            print("[JACameraView-Native] ✓ General.json FOUND at: \(generalPath)")
-        } else {
-            print("[JACameraView-Native] ✗ General.json NOT FOUND in main bundle!")
-        }
-        
-        // Check for other critical files
-        let criticalFiles = ["Cloud", "AddDevice", "PreviewPlayback", "JAHelp"]
-        for file in criticalFiles {
-            if let path = bundle.path(forResource: file, ofType: "json") {
-                print("[JACameraView-Native] ✓ \(file).json FOUND")
-            } else {
-                print("[JACameraView-Native] ✗ \(file).json NOT FOUND")
-            }
-        }
-        
-        // List all JSON files in bundle (for debugging)
-        if let resourcePath = bundle.resourcePath {
-            do {
-                let files = try FileManager.default.contentsOfDirectory(atPath: resourcePath)
-                let jsonFiles = files.filter { $0.hasSuffix(".json") }
-                print("[JACameraView-Native] JSON files in bundle root: \(jsonFiles)")
-            } catch {
-                print("[JACameraView-Native] Error listing bundle contents: \(error)")
-            }
-        }
-        print("[JACameraView-Native] *** End Bundle Verification ***")
-        
-        // Create the preview view controller directly
-        print("[JACameraView-Native] Creating JAPreviewMultipleViewController...")
+        // Create the preview view controller
         previewVC = JAPreviewMultipleViewController()
         
         guard let vc = previewVC else {
@@ -185,10 +155,8 @@ class JACameraView: NSObject, FlutterPlatformView {
             showPlaceholder(message: "Error: Preview creation failed")
             return
         }
-        print("[JACameraView-Native] JAPreviewMultipleViewController created: \(vc)")
         
-        // Configure the view controller with juanUI = YES for full SDK rendering
-        // Using juanUI = YES enables the SDK's built-in video rendering
+        // Configure with juanUI = YES for SDK's built-in video rendering + PTZ
         vc.juanUI = true
         vc.channelCount = channelCount
         vc.deviceID = deviceId
@@ -198,103 +166,186 @@ class JACameraView: NSObject, FlutterPlatformView {
         vc.devicePassword = password
         vc.deviceName = deviceName
         
-        print("[JACameraView-Native] PreviewVC configured:")
-        print("[JACameraView-Native]   juanUI: YES (using SDK's built-in UI)")
-        print("[JACameraView-Native]   channelCount: \(channelCount)")
-        print("[JACameraView-Native]   deviceID: \(deviceId)")
-        print("[JACameraView-Native]   deviceUser: \(username)")
-        print("[JACameraView-Native]   deviceName: \(deviceName)")
+        print("[JACameraView-Native] PreviewVC configured: juanUI=YES, ch=\(channelCount), id=\(deviceId)")
         
-        // CRITICAL: Trigger view loading
+        // Trigger view loading
         _ = vc.view
-        print("[JACameraView-Native] VC view loaded: \(String(describing: vc.view))")
-        print("[JACameraView-Native] VC view frame: \(vc.view.frame)")
-        
-        // Log screen property (JAMultivideosPlayer) - these are not optional in SDK
-        let screen = vc.screen
-        print("[JACameraView-Native] screen (JAMultivideosPlayer): \(String(describing: screen))")
-        
-        let screenView = vc.screenView
-        print("[JACameraView-Native] screenView: \(String(describing: screenView))")
         
         // Add to container on main thread
         DispatchQueue.main.async { [weak self] in
             guard let self = self, let vc = self.previewVC else { return }
             
-            print("[JACameraView-Native] Adding preview VC view to container...")
-            print("[JACameraView-Native] Container bounds: \(self.containerView.bounds)")
+            let bounds = self.containerView.bounds
+            print("[JACameraView-Native] Container bounds: \(bounds)")
             
             // Clear placeholder
             self.containerView.subviews.forEach { $0.removeFromSuperview() }
             
-            // CRITICAL: For UIViewController lifecycle, we need to add as child VC
-            // Find the root view controller
+            // STRATEGY: Give SDK view a VERY tall frame.
+            // The SDK lays out video at top, toolbars/panels below.
+            // Container's clipsToBounds=true clips away everything outside visible bounds.
+            let sdkHeight = max(bounds.height * 3, 2000)
+            
+            // Add as child VC for proper lifecycle
             if let rootVC = UIApplication.shared.keyWindow?.rootViewController {
-                print("[JACameraView-Native] Found root VC: \(type(of: rootVC))")
-                
-                // Add as child view controller for proper lifecycle
                 rootVC.addChild(vc)
-                vc.view.frame = self.containerView.bounds
-                vc.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+                vc.view.frame = CGRect(x: 0, y: 0, width: bounds.width, height: sdkHeight)
+                // Only flex width, NOT height — we want height to stay tall
+                vc.view.autoresizingMask = [.flexibleWidth]
                 self.containerView.addSubview(vc.view)
                 vc.didMove(toParent: rootVC)
-                
-                print("[JACameraView-Native] Preview VC added as child, view frame: \(vc.view.frame)")
             } else {
-                // Fallback: just add the view
-                print("[JACameraView-Native] No root VC found, adding view directly")
-                vc.view.frame = self.containerView.bounds
-                vc.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+                vc.view.frame = CGRect(x: 0, y: 0, width: bounds.width, height: sdkHeight)
+                vc.view.autoresizingMask = [.flexibleWidth]
                 self.containerView.addSubview(vc.view)
             }
             
-            print("[JACameraView-Native] Preview view hierarchy:")
-            self.logViewHierarchy(self.containerView, level: 0)
+            // Create overlay view on top of SDK view — this is where we show video + PTZ cleanly
+            let overlay = UIView(frame: bounds)
+            overlay.backgroundColor = .clear
+            overlay.clipsToBounds = true
+            overlay.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            overlay.isUserInteractionEnabled = true
+            self.containerView.addSubview(overlay)
+            self.overlayView = overlay
             
-            // Start stream after a delay
+            print("[JACameraView-Native] SDK view height set to \(sdkHeight), overlay added")
+            
+            // Start stream
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-                print("[JACameraView-Native] Calling openVideoStream:YES...")
                 self?.previewVC?.openVideoStream(true)
                 print("[JACameraView-Native] openVideoStream called")
+            }
+            
+            // Start periodic cleanup — runs every 2 seconds for the first 20 seconds
+            // This catches SDKrelayouts reliably
+            var cleanupCount = 0
+            self.cleanupTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] timer in
+                cleanupCount += 1
+                self?.enforceCleanLayout()
+                // Stop after 10 runs (20 seconds) — SDK should be stable by then
+                if cleanupCount >= 10 {
+                    timer.invalidate()
+                    print("[JACameraView-Native] Cleanup timer stopped after \(cleanupCount) runs")
+                }
             }
         }
     }
     
-    private func logViewHierarchy(_ view: UIView, level: Int) {
-        let indent = String(repeating: "  ", count: level)
-        print("\(indent)\(type(of: view)) frame: \(view.frame)")
+    /// Enforce clean layout: hide everything except video player in the container bounds,
+    /// and position PTZ circle as overlay
+    private func enforceCleanLayout() {
+        let bounds = containerView.bounds
+        guard bounds.width > 0 && bounds.height > 0 else { return }
+        guard let overlay = overlayView else { return }
+        
+        // Ensure SDK view stays tall (SDK may try to resize it)
+        if let sdkView = previewVC?.view, sdkView.frame.height < bounds.height * 2 {
+            let sdkHeight = max(bounds.height * 3, 2000)
+            sdkView.frame = CGRect(x: 0, y: 0, width: bounds.width, height: sdkHeight)
+        }
+        
+        // Ensure overlay is on top and correctly sized
+        overlay.frame = bounds
+        containerView.bringSubviewToFront(overlay)
+        
+        // Find video player and PTZ circle in the SDK hierarchy
+        var videoPlayerView: UIView?
+        var ptzCircleView: UIView?
+        
+        func findViews(in view: UIView) {
+            let className = String(describing: type(of: view))
+            if className == "JAMultivideosPlayer" {
+                videoPlayerView = view
+            }
+            if className == "JACircleDirectionView" {
+                ptzCircleView = view
+            }
+            for sub in view.subviews {
+                findViews(in: sub)
+            }
+        }
+        
+        if let sdkView = previewVC?.view {
+            findViews(in: sdkView)
+        }
+        
+        // If we found the video player, ensure it fills the visible area
+        if let videoPlayer = videoPlayerView {
+            // Force the video player to fill the container bounds
+            // Even though it's deep in the SDK hierarchy, setting its frame
+            // makes the video render at the right size
+            videoPlayer.frame = CGRect(x: 0, y: 0, width: bounds.width, height: bounds.height)
+            
+            // Also resize nested video views
+            resizeNestedVideoViews(in: videoPlayer, to: bounds.size)
+        }
+        
+        // If PTZ circle is found and NOT already in overlay, move it there
+        if let ptzCircle = ptzCircleView {
+            let ptzSize: CGFloat = min(bounds.width * 0.30, bounds.height * 0.50, 200)
+            let ptzFrame = CGRect(
+                x: 20,
+                y: bounds.height - ptzSize - 30,
+                width: ptzSize,
+                height: ptzSize
+            )
+            
+            if ptzCircle.superview !== overlay {
+                // Move PTZ circle from SDK hierarchy to our clean overlay
+                ptzCircle.removeFromSuperview()
+                ptzCircle.frame = ptzFrame
+                ptzCircle.alpha = 0.85
+                overlay.addSubview(ptzCircle)
+                print("[JACameraView-Native] PTZ circle moved to overlay, frame: \(ptzFrame)")
+            } else {
+                // Already in overlay, just ensure frame is correct
+                ptzCircle.frame = ptzFrame
+            }
+            ptzCircle.isHidden = false
+        }
+    }
+    
+    /// Recursively resize nested video/screen views to fill given size
+    private func resizeNestedVideoViews(in view: UIView, to size: CGSize) {
+        let targetRect = CGRect(origin: .zero, size: size)
         for subview in view.subviews {
-            logViewHierarchy(subview, level: level + 1)
+            let className = String(describing: type(of: subview))
+            if className == "JAVideoPlayer" || className == "JANormalScreen" || className == "UIScrollView" {
+                subview.frame = targetRect
+                subview.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+                resizeNestedVideoViews(in: subview, to: size)
+            } else if subview is UIImageView {
+                subview.frame = targetRect
+                subview.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            }
         }
     }
     
     private func showPlaceholder(message: String) {
-        print("[JACameraView-Native] showPlaceholder: \(message)")
-        
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
-            
             self.containerView.subviews.forEach { $0.removeFromSuperview() }
             
-            let placeholderLabel = UILabel(frame: self.containerView.bounds)
-            placeholderLabel.text = message
-            placeholderLabel.textColor = .white
-            placeholderLabel.textAlignment = .center
-            placeholderLabel.numberOfLines = 0
-            placeholderLabel.font = UIFont.systemFont(ofSize: 14)
-            placeholderLabel.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-            placeholderLabel.backgroundColor = UIColor(white: 0.1, alpha: 1.0)
-            self.containerView.addSubview(placeholderLabel)
+            let label = UILabel(frame: self.containerView.bounds)
+            label.text = message
+            label.textColor = .white
+            label.textAlignment = .center
+            label.numberOfLines = 0
+            label.font = UIFont.systemFont(ofSize: 14)
+            label.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            label.backgroundColor = UIColor(white: 0.1, alpha: 1.0)
+            self.containerView.addSubview(label)
         }
     }
     
     deinit {
         print("[JACameraView-Native] deinit - cleaning up")
+        cleanupTimer?.invalidate()
+        cleanupTimer = nil
         
-        // Stop streaming
         previewVC?.openVideoStream(false)
         
-        // Remove from parent if added as child
         if let vc = previewVC {
             vc.willMove(toParent: nil)
             vc.view.removeFromSuperview()
