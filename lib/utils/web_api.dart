@@ -8,6 +8,7 @@ import 'package:fluttertoast/fluttertoast.dart';
 
 import 'package:godrej_home/utils/app_state.dart';
 import 'package:godrej_home/utils/log_entry.dart';
+import 'package:godrej_home/utils/token_manager.dart';
 
 enum UserType { ONE_TIME, PERMANENT, TEMPORARY, SCHEDULED }
 
@@ -251,6 +252,11 @@ class WebApi {
             Provider.of<AppState>(context, listen: false).refreshToken =
                 extractedRefreshToken;
           }
+          // Persist tokens to SharedPreferences (fresh OTP session)
+          await TokenManager.saveTokensFromOtp(
+            accessToken: extractedAccessToken,
+            refreshToken: extractedRefreshToken ?? '',
+          );
           _showToast('OTP verified successfully!', true);
           print('Success');
         } else {
@@ -313,6 +319,11 @@ class WebApi {
             Provider.of<AppState>(context, listen: false).refreshToken =
                 newRefreshToken;
           }
+          // Persist refreshed tokens (keeps existing OTP timestamp)
+          await TokenManager.saveTokensFromRefresh(
+            accessToken: newAccessToken,
+            refreshToken: newRefreshToken,
+          );
           print('[DEBUG] refreshAccessToken: Tokens refreshed successfully');
           return true;
         }
@@ -362,6 +373,8 @@ class WebApi {
 
         if (context.mounted) {
           Provider.of<AppState>(context, listen: false).lockID = _lockId!;
+          // Persist lock ID
+          await TokenManager.saveLockId(_lockId);
         }
         _showToast('Lock list retrieved successfully!', true);
       } else {
@@ -814,5 +827,85 @@ class WebApi {
       _safeHideLoader(context);
       return null;
     }
+  }
+
+  /// Ensure a valid access token is available in AppState.
+  /// Returns true if a valid token is ready; false if a new OTP is needed.
+  /// Handles auto-refresh if the token is >3 days old but OTP is <7 days.
+  static Future<bool> ensureValidToken(BuildContext context) async {
+    if (!context.mounted) return false;
+
+    final appState = Provider.of<AppState>(context, listen: false);
+
+    // 1) If AppState already has tokens and lockID, check freshness
+    if (appState.accessToken.isNotEmpty && appState.lockID.isNotEmpty) {
+      final needsRefresh = await TokenManager.needsTokenRefresh();
+      if (!needsRefresh) {
+        print('[WebApi] ensureValidToken: tokens fresh in AppState');
+        return true;
+      }
+      // Token is stale — try refresh below
+    }
+
+    // 2) Check if stored tokens exist at all
+    final hasTokens = await TokenManager.hasStoredTokens();
+    if (!hasTokens) {
+      print('[WebApi] ensureValidToken: no stored tokens — need OTP');
+      return false;
+    }
+
+    // 3) Check if OTP session has expired (>7 days)
+    final otpExpired = await TokenManager.needsNewOtp();
+    if (otpExpired) {
+      print('[WebApi] ensureValidToken: OTP session expired — need new OTP');
+      await TokenManager.clearTokens();
+      return false;
+    }
+
+    // 4) Restore tokens into AppState from SharedPreferences
+    final storedAccess = await TokenManager.getAccessToken();
+    final storedRefresh = await TokenManager.getRefreshToken();
+    final storedLockId = await TokenManager.getLockId();
+
+    if (context.mounted && storedAccess != null && storedAccess.isNotEmpty) {
+      appState.accessToken = storedAccess;
+    }
+    if (context.mounted && storedRefresh != null && storedRefresh.isNotEmpty) {
+      appState.refreshToken = storedRefresh;
+    }
+    if (context.mounted && storedLockId != null && storedLockId.isNotEmpty) {
+      appState.lockID = storedLockId;
+    }
+
+    // 5) Check if token needs refresh (>3 days old)
+    final needsRefresh = await TokenManager.needsTokenRefresh();
+    if (needsRefresh) {
+      print('[WebApi] ensureValidToken: token >3 days old, refreshing...');
+      final api = WebApi();
+      final success = await api.refreshAccessToken(context);
+      if (!success) {
+        print('[WebApi] ensureValidToken: refresh failed');
+        // Refresh failed — but OTP is still valid, so tokens may still work
+        // Return true to try with existing token, it might still be valid
+      }
+
+      // Re-fetch lock list if lockID was lost
+      if (context.mounted) {
+        final updatedState = Provider.of<AppState>(context, listen: false);
+        if (updatedState.lockID.isEmpty) {
+          await api.getLockList(context);
+        }
+      }
+    }
+
+    // Final check
+    if (context.mounted) {
+      final finalState = Provider.of<AppState>(context, listen: false);
+      final ready =
+          finalState.accessToken.isNotEmpty && finalState.lockID.isNotEmpty;
+      print('[WebApi] ensureValidToken: ready=$ready');
+      return ready;
+    }
+    return false;
   }
 }

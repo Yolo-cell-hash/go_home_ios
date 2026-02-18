@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:vibration/vibration.dart';
 import 'package:godrej_home/services/notification_service.dart';
+import 'package:godrej_home/utils/token_manager.dart';
 
 // Import modular screen components
 import 'vertical_home/welcome_screen.dart';
@@ -201,8 +202,20 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
     _fetchFirebaseState();
     _setupFirebaseListener();
     _setupAckListener();
+    _loadPersistedUser();
     // NOTE: BLE is intentionally NOT initialized here
     // BLE initialization happens in BedStorageScreen when user navigates there
+  }
+
+  /// Load persisted user profile from SharedPreferences
+  Future<void> _loadPersistedUser() async {
+    final savedUser = await TokenManager.loadActiveUser();
+    if (savedUser != null && savedUser.isNotEmpty && mounted) {
+      setState(() {
+        _activeUserName = savedUser;
+      });
+      print('[DEBUG] Restored persisted user: $savedUser');
+    }
   }
 
   /// Setup real-time Firebase listener for automation flags
@@ -285,12 +298,14 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
           setState(() {
             _activeUserName = parsedUser;
           });
+          // Persist the new user from ACK
+          if (parsedUser != null) {
+            TokenManager.saveActiveUser(parsedUser);
+          }
           print('[DEBUG] Active user updated to: $_activeUserName');
         }
       } else if (mounted) {
-        setState(() {
-          _activeUserName = null;
-        });
+        // ACK cleared but don't override persisted user — keep existing
       }
     });
   }
@@ -742,6 +757,9 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
       setState(() {
         _activeUserName = userName;
       });
+
+      // Persist user profile to SharedPreferences
+      await TokenManager.saveActiveUser(userName);
 
       // Ensure minimum 2 second delay
       await Future.delayed(const Duration(seconds: 2));

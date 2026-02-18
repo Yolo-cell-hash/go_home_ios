@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:godrej_home/utils/web_api.dart';
 import 'package:godrej_home/utils/app_state.dart';
+import 'package:godrej_home/utils/token_manager.dart';
 
 /// Home Scenes and Home Spaces screen widget
 /// Displays preset scenes (morning, night, party, vacation) and room navigation
@@ -285,20 +286,56 @@ class _HiddenAuthDialogState extends State<_HiddenAuthDialog> {
 
     final appState = Provider.of<AppState>(context, listen: false);
 
-    // If we already have both tokens and lockID, we're good
+    // If we already have both tokens and lockID in-memory, we're good
     if (appState.accessToken.isNotEmpty && appState.lockID.isNotEmpty) {
+      final needsRefresh = await TokenManager.needsTokenRefresh();
+      if (!needsRefresh) {
+        setState(() {
+          _isAuthenticated = true;
+          _statusMessage = '✅ Already authenticated';
+        });
+        return;
+      }
+    }
+
+    // Try to restore from SharedPreferences
+    final hasTokens = await TokenManager.hasStoredTokens();
+    if (!hasTokens) {
+      // No stored tokens, user must OTP
+      return;
+    }
+
+    // Check if OTP session expired (>7 days)
+    final otpExpired = await TokenManager.needsNewOtp();
+    if (otpExpired) {
+      await TokenManager.clearTokens();
       setState(() {
-        _isAuthenticated = true;
-        _statusMessage = '✅ Already authenticated';
+        _statusMessage = 'Session expired — please verify via OTP';
       });
       return;
     }
 
-    // Try refresh token if available
-    if (appState.refreshToken.isNotEmpty) {
+    // Restore tokens into AppState
+    final storedAccess = await TokenManager.getAccessToken();
+    final storedRefresh = await TokenManager.getRefreshToken();
+    final storedLockId = await TokenManager.getLockId();
+
+    if (mounted && storedAccess != null && storedAccess.isNotEmpty) {
+      appState.accessToken = storedAccess;
+    }
+    if (mounted && storedRefresh != null && storedRefresh.isNotEmpty) {
+      appState.refreshToken = storedRefresh;
+    }
+    if (mounted && storedLockId != null && storedLockId.isNotEmpty) {
+      appState.lockID = storedLockId;
+    }
+
+    // Check if token needs refresh (>3 days old)
+    final needsRefresh = await TokenManager.needsTokenRefresh();
+    if (needsRefresh && appState.refreshToken.isNotEmpty) {
       setState(() {
         _isProcessing = true;
-        _statusMessage = '🔄 Attempting token refresh...';
+        _statusMessage = '🔄 Refreshing access token...';
       });
 
       bool refreshed = await widget.webApi.refreshAccessToken(context);
@@ -307,12 +344,14 @@ class _HiddenAuthDialogState extends State<_HiddenAuthDialog> {
         setState(() {
           _statusMessage = '🔄 Token refreshed, fetching lock list...';
         });
-        await widget.webApi.getLockList(context);
+
+        if (appState.lockID.isEmpty) {
+          await widget.webApi.getLockList(context);
+        }
 
         if (mounted) {
           final updatedState = Provider.of<AppState>(context, listen: false);
           if (updatedState.lockID.isNotEmpty) {
-            // Write access token to Firebase RTDB
             _writeAccessTokenToFirebase(updatedState.accessToken);
             setState(() {
               _isAuthenticated = true;
@@ -329,6 +368,31 @@ class _HiddenAuthDialogState extends State<_HiddenAuthDialog> {
           _isProcessing = false;
           _statusMessage = 'Refresh failed — use OTP below';
         });
+      }
+    } else if (!needsRefresh && appState.accessToken.isNotEmpty) {
+      // Token is still fresh, just verify lockID
+      if (appState.lockID.isEmpty) {
+        setState(() {
+          _isProcessing = true;
+          _statusMessage = '🔄 Fetching lock list...';
+        });
+        await widget.webApi.getLockList(context);
+      }
+
+      if (mounted) {
+        final updatedState = Provider.of<AppState>(context, listen: false);
+        if (updatedState.lockID.isNotEmpty) {
+          _writeAccessTokenToFirebase(updatedState.accessToken);
+          setState(() {
+            _isAuthenticated = true;
+            _isProcessing = false;
+            _statusMessage = '✅ Already authenticated (persisted)';
+          });
+        } else {
+          setState(() {
+            _isProcessing = false;
+          });
+        }
       }
     }
   }

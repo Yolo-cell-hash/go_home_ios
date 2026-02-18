@@ -41,10 +41,15 @@ class _DoorLockScreenState extends State<DoorLockScreen> {
   @override
   void initState() {
     super.initState();
-    // Fetch activity trails and lock status after first frame
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _fetchActivityTrails();
-      _fetchLockStatus();
+    // Ensure valid token before fetching data, then fetch
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final hasToken = await WebApi.ensureValidToken(context);
+      if (hasToken && mounted) {
+        _fetchActivityTrails();
+        _fetchLockStatus();
+      } else {
+        print('[DEBUG] DoorLockScreen: No valid token, skipping API calls');
+      }
     });
   }
 
