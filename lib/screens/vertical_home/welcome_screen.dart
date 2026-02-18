@@ -15,6 +15,8 @@ class WelcomeScreenWidget extends StatelessWidget {
   final Function(int index)?
   onIconLongPress; // Callback when icon is long pressed
   final String? activeUserName; // Active user from Firebase ACK
+  final Function(String userName)?
+  onProfileSelected; // Profile dropdown callback
 
   // Map of known usernames to their avatar image paths
   static const Map<String, String> userAvatars = {
@@ -30,6 +32,7 @@ class WelcomeScreenWidget extends StatelessWidget {
     required this.onIconTap,
     this.onIconLongPress,
     this.activeUserName,
+    this.onProfileSelected,
   });
 
   // Check if this is a small screen (iPhone in portrait)
@@ -50,7 +53,7 @@ class WelcomeScreenWidget extends StatelessWidget {
         child: Column(
           children: [
             // Navbar
-            _buildNavbar(primaryColor, isSmallScreen),
+            _buildNavbar(context, primaryColor, isSmallScreen),
             // Content - Backdrop image with fade blur and status text
             Expanded(
               child: Stack(
@@ -85,7 +88,11 @@ class WelcomeScreenWidget extends StatelessWidget {
   }
 
   /// Builds the top navbar with logo and location/user display
-  Widget _buildNavbar(Color primaryColor, bool isSmallScreen) {
+  Widget _buildNavbar(
+    BuildContext context,
+    Color primaryColor,
+    bool isSmallScreen,
+  ) {
     print('[DEBUG] WelcomeScreen: Building navbar');
     final hPadding = isSmallScreen ? 20.0 : 40.0;
     final vPadding = isSmallScreen ? 15.0 : 30.0;
@@ -104,52 +111,59 @@ class WelcomeScreenWidget extends StatelessWidget {
         children: [
           Image.asset('images/new_main_logo.png', height: logoHeight),
           hasActiveUser
-              ? Row(
-                  children: [
-                    Text(
-                      _displayName(activeUserName!),
-                      style: TextStyle(
-                        fontFamily: 'GEG',
-                        fontSize: fontSize,
-                        fontWeight: FontWeight.w400,
-                        color: primaryColor,
+              ? GestureDetector(
+                  onTap: () =>
+                      _showProfileDropdown(context, primaryColor, avatarRadius),
+                  child: Row(
+                    children: [
+                      Text(
+                        _displayName(activeUserName!),
+                        style: TextStyle(
+                          fontFamily: 'GEG',
+                          fontSize: fontSize,
+                          fontWeight: FontWeight.w400,
+                          color: primaryColor,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 10),
-
-                    CircleAvatar(
-                      radius: avatarRadius,
-                      backgroundImage: AssetImage(
-                        userAvatars[activeUserName!.toLowerCase()]!,
+                      const SizedBox(width: 10),
+                      CircleAvatar(
+                        radius: avatarRadius,
+                        backgroundImage: AssetImage(
+                          userAvatars[activeUserName!.toLowerCase()]!,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 )
-              : Row(
-                  children: [
-                    Text(
-                      'Mumbai Home',
-                      style: TextStyle(
-                        fontFamily: 'GEG',
-                        fontSize: fontSize,
-                        fontWeight: FontWeight.w400,
-                        color: primaryColor,
+              : GestureDetector(
+                  onTap: () =>
+                      _showProfileDropdown(context, primaryColor, avatarRadius),
+                  child: Row(
+                    children: [
+                      Text(
+                        'Mumbai Home',
+                        style: TextStyle(
+                          fontFamily: 'GEG',
+                          fontSize: fontSize,
+                          fontWeight: FontWeight.w400,
+                          color: primaryColor,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: primaryColor, width: 1.5),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: primaryColor, width: 1.5),
+                        ),
+                        child: Icon(
+                          CupertinoIcons.chevron_down,
+                          size: 14,
+                          color: primaryColor,
+                        ),
                       ),
-                      child: Icon(
-                        CupertinoIcons.chevron_down,
-                        size: 14,
-                        color: primaryColor,
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
         ],
       ),
@@ -391,6 +405,95 @@ class WelcomeScreenWidget extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  /// Shows a dropdown popup to select a user profile
+  void _showProfileDropdown(
+    BuildContext context,
+    Color primaryColor,
+    double avatarRadius,
+  ) {
+    // Filter out the currently active user
+    final currentKey = activeUserName?.toLowerCase();
+    final availableUsers = userAvatars.keys
+        .where((key) => key != currentKey)
+        .toList();
+
+    showCupertinoModalPopup(
+      context: context,
+      builder: (popupContext) {
+        return Container(
+          padding: const EdgeInsets.only(top: 12, bottom: 24),
+          decoration: BoxDecoration(
+            color: CupertinoColors.systemBackground.resolveFrom(popupContext),
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(20),
+              topRight: Radius.circular(20),
+            ),
+          ),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Handle bar
+                Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: CupertinoColors.systemGrey3,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                // Title
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Text(
+                    'Switch Profile',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: CupertinoColors.label.resolveFrom(popupContext),
+                    ),
+                  ),
+                ),
+                // User list
+                ...availableUsers.map((userKey) {
+                  return CupertinoButton(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 10,
+                    ),
+                    onPressed: () {
+                      Navigator.of(popupContext).pop();
+                      onProfileSelected?.call(userKey);
+                    },
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: avatarRadius,
+                          backgroundImage: AssetImage(userAvatars[userKey]!),
+                        ),
+                        const SizedBox(width: 14),
+                        Text(
+                          _displayName(userKey),
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w500,
+                            color: primaryColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

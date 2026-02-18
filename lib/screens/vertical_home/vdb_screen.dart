@@ -1146,14 +1146,49 @@ class _VDBScreenState extends State<VDBScreen> with WidgetsBindingObserver {
   }
 
   Widget _buildLogItem(Map<String, dynamic> log, Color primaryColor) {
-    final message = (log['message'] ?? '').toString();
+    final rawMessage = (log['message'] ?? '').toString();
     final rawTimestamp = (log['timestamp'] ?? '').toString();
     final imageBytes = log['imageBytes'] as Uint8List?;
-    print(
-      '[DEBUG] VDB _buildLogItem: message="$message", timestamp="$rawTimestamp", imageBytes=${imageBytes?.length ?? 0}',
-    );
 
-    // Format timestamp — split into date and time lines
+    // Parse status prefix: "Success-..." or "Error-..."
+    bool isSuccess = false;
+    bool isError = false;
+    String displayMessage = rawMessage;
+
+    final lowerMsg = rawMessage.toLowerCase();
+    if (lowerMsg.startsWith('success')) {
+      isSuccess = true;
+      // Strip "Success-", "Success -", "Success:" etc.
+      displayMessage = rawMessage
+          .replaceFirst(RegExp(r'^[Ss]uccess\s*[-:]\s*'), '')
+          .trim();
+    } else if (lowerMsg.startsWith('error')) {
+      isError = true;
+      displayMessage = rawMessage
+          .replaceFirst(RegExp(r'^[Ee]rror\s*[-:]\s*'), '')
+          .trim();
+    }
+
+    if (displayMessage.isEmpty) displayMessage = rawMessage;
+
+    // Status visuals
+    final Color statusColor = isSuccess
+        ? const Color(0xFF34C759) // green
+        : isError
+        ? const Color(0xFFFF3B30) // red
+        : CupertinoColors.systemGrey;
+    final IconData statusIcon = isSuccess
+        ? CupertinoIcons.checkmark_shield_fill
+        : isError
+        ? CupertinoIcons.xmark_shield_fill
+        : CupertinoIcons.doc_text;
+    final String statusLabel = isSuccess
+        ? 'Access Granted'
+        : isError
+        ? 'Access Denied'
+        : '';
+
+    // Format timestamp
     String datePart = '';
     String timePart = '';
     if (rawTimestamp.isNotEmpty) {
@@ -1187,68 +1222,257 @@ class _VDBScreenState extends State<VDBScreen> with WidgetsBindingObserver {
       }
     }
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          // Left: Image thumbnail (always show image if available)
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: imageBytes != null
-                ? Image.memory(
-                    imageBytes,
-                    width: 60,
-                    height: 60,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) =>
-                        _buildFallbackIcon(primaryColor),
-                  )
-                : _buildFallbackIcon(primaryColor),
-          ),
-          const SizedBox(width: 14),
+    return GestureDetector(
+      onTap: () => _showLogDetail(
+        imageBytes: imageBytes,
+        message: displayMessage,
+        statusLabel: statusLabel,
+        statusColor: statusColor,
+        statusIcon: statusIcon,
+        datePart: datePart,
+        timePart: timePart,
+      ),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+        decoration: BoxDecoration(
+          color: isSuccess
+              ? const Color(0x0834C759)
+              : isError
+              ? const Color(0x08FF3B30)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // Status icon
+            Icon(statusIcon, color: statusColor, size: 22),
+            const SizedBox(width: 10),
 
-          // Center: Message (expanded)
-          Expanded(
-            child: Text(
-              message,
-              style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
-                color: CupertinoColors.black,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+            // Image thumbnail
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: imageBytes != null
+                  ? Image.memory(
+                      imageBytes,
+                      width: 52,
+                      height: 52,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) =>
+                          _buildFallbackIcon(primaryColor),
+                    )
+                  : _buildFallbackIcon(primaryColor),
             ),
-          ),
-          const SizedBox(width: 14),
+            const SizedBox(width: 12),
 
-          // Right (trailing): Timestamp
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                datePart,
-                style: const TextStyle(
-                  fontSize: 11,
-                  color: CupertinoColors.systemGrey,
-                ),
+            // Message (expanded)
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (statusLabel.isNotEmpty)
+                    Text(
+                      statusLabel,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: statusColor,
+                      ),
+                    ),
+                  if (statusLabel.isNotEmpty) const SizedBox(height: 2),
+                  Text(
+                    displayMessage,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: CupertinoColors.black,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ),
-              if (timePart.isNotEmpty) ...[
-                const SizedBox(height: 2),
+            ),
+            const SizedBox(width: 10),
+
+            // Timestamp (trailing)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
+              children: [
                 Text(
-                  timePart,
+                  datePart,
                   style: const TextStyle(
                     fontSize: 11,
-                    color: CupertinoColors.systemGrey2,
+                    color: CupertinoColors.systemGrey,
+                  ),
+                ),
+                if (timePart.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    timePart,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: CupertinoColors.systemGrey2,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Show enlarged image + details when a log item is tapped
+  void _showLogDetail({
+    Uint8List? imageBytes,
+    required String message,
+    required String statusLabel,
+    required Color statusColor,
+    required IconData statusIcon,
+    required String datePart,
+    required String timePart,
+  }) {
+    showCupertinoDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) {
+        return Center(
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 24),
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: CupertinoColors.systemBackground.resolveFrom(ctx),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.3),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Image preview (large)
+                if (imageBytes != null)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child: Image.memory(
+                      imageBytes,
+                      width: double.infinity,
+                      height: 240,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        height: 120,
+                        color: CupertinoColors.systemGrey6,
+                        child: const Center(
+                          child: Icon(
+                            CupertinoIcons.photo,
+                            size: 40,
+                            color: CupertinoColors.systemGrey,
+                          ),
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  Container(
+                    height: 120,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: CupertinoColors.systemGrey6,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Center(
+                      child: Icon(
+                        CupertinoIcons.camera,
+                        size: 40,
+                        color: CupertinoColors.systemGrey,
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 16),
+
+                // Status badge
+                if (statusLabel.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: statusColor.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(statusIcon, color: statusColor, size: 16),
+                        const SizedBox(width: 6),
+                        Text(
+                          statusLabel,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: statusColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                if (statusLabel.isNotEmpty) const SizedBox(height: 12),
+
+                // Message
+                Text(
+                  message,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    color: CupertinoColors.black,
+                    decoration: TextDecoration.none,
+                  ),
+                ),
+                const SizedBox(height: 8),
+
+                // Timestamp
+                Text(
+                  '$datePart  $timePart',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: CupertinoColors.systemGrey,
+                    decoration: TextDecoration.none,
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Close button
+                CupertinoButton(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 32,
+                    vertical: 10,
+                  ),
+                  color: CupertinoColors.systemGrey5,
+                  borderRadius: BorderRadius.circular(12),
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text(
+                    'Close',
+                    style: TextStyle(
+                      color: CupertinoColors.black,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ],
-            ],
+            ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 

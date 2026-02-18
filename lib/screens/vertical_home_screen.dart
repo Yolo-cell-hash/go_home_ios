@@ -593,6 +593,7 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
                 onIconTap: _handleWelcomeIconTap,
                 onIconLongPress: _handleWelcomeIconLongPress,
                 activeUserName: _activeUserName,
+                onProfileSelected: _handleProfileSelected,
               ),
               // Screen 2: Home Scenes & Spaces
               HomeScenesScreenWidget(
@@ -670,6 +671,111 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
       duration: const Duration(milliseconds: 500),
       curve: Curves.easeInOut,
     );
+  }
+
+  // User profile presets for automation-flags
+  static const Map<String, Map<String, dynamic>> _profilePresets = {
+    'sd': {'light': true, 'party': true},
+    'deodatta': {
+      'light': true,
+      'light intensity': 255,
+      'light-hex-value': '253, 241, 175',
+    },
+    'parag': {
+      'light': true,
+      'light intensity': 150,
+      'light-hex-value': '253, 150, 150',
+    },
+    'jinay': {
+      'light': true,
+      'light intensity': 69,
+      'light-hex-value': '69,69,69',
+    },
+  };
+
+  // Display names for profiles
+  static const Map<String, String> _profileDisplayNames = {
+    'sd': 'Sayali',
+    'deodatta': 'Deodatta',
+    'parag': 'Parag',
+    'jinay': 'Jinay',
+  };
+
+  /// Handle profile selection from dropdown
+  Future<void> _handleProfileSelected(String userName) async {
+    final preset = _profilePresets[userName];
+    if (preset == null) return;
+
+    final displayName = _profileDisplayNames[userName] ?? userName;
+    print('[DEBUG] Profile selected: $userName ($displayName)');
+
+    // Show loader overlay
+    showCupertinoDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (loaderContext) {
+        return CupertinoAlertDialog(
+          title: const Text('Setting Profile'),
+          content: Padding(
+            padding: const EdgeInsets.only(top: 12.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const CupertinoActivityIndicator(radius: 16),
+                const SizedBox(height: 12),
+                Text('Applying $displayName\'s preferences...'),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    try {
+      // Write all preset values to Firebase
+      for (final entry in preset.entries) {
+        await _dbRef.child(entry.key).set(entry.value);
+      }
+      print('[DEBUG] Profile preset written to Firebase for $userName');
+
+      // Update active user
+      setState(() {
+        _activeUserName = userName;
+      });
+
+      // Ensure minimum 2 second delay
+      await Future.delayed(const Duration(seconds: 2));
+    } catch (e) {
+      print('[ERROR] Failed to write profile preset: $e');
+    }
+
+    // Dismiss loader
+    if (mounted) {
+      Navigator.of(context).pop();
+    }
+
+    // Show success popup
+    if (mounted) {
+      showCupertinoDialog(
+        context: context,
+        builder: (successContext) {
+          return CupertinoAlertDialog(
+            title: const Text('Success'),
+            content: Padding(
+              padding: const EdgeInsets.only(top: 8.0),
+              child: Text('$displayName\'s profile has been set successfully.'),
+            ),
+            actions: [
+              CupertinoDialogAction(
+                isDefaultAction: true,
+                onPressed: () => Navigator.of(successContext).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          );
+        },
+      );
+    }
   }
 
   /// Handle welcome screen icon tap with Firebase sync
