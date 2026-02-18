@@ -2,6 +2,7 @@
 // VDB (Video Door Bell) control screen with live video streaming
 
 import 'dart:async';
+import 'dart:convert';
 import 'dart:ui' as ui;
 import 'dart:typed_data';
 import 'package:flutter/cupertino.dart';
@@ -9,6 +10,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:image_gallery_saver_plus/image_gallery_saver_plus.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_database/firebase_database.dart' hide Query;
 import 'package:godrej_home/widgets/navbar_setup.dart';
 import 'package:godrej_home/services/vdb_service.dart';
 
@@ -48,12 +51,21 @@ class _VDBScreenState extends State<VDBScreen> with WidgetsBindingObserver {
   final GlobalKey _repaintBoundaryKey = GlobalKey();
   bool _isCapturing = false;
 
+  // Activity trail state
+  List<Map<String, dynamic>> _activityLogs = [];
+  bool _isLoadingLogs = false;
+  bool _hasMoreLogs = true;
+  DocumentSnapshot? _lastDocument;
+  final ScrollController _logScrollController = ScrollController();
+  static const int _logsPerPage = 20;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _initRenderer();
     _connectOnPageInit();
+    _fetchActivityLogs();
   }
 
   @override
@@ -383,6 +395,7 @@ class _VDBScreenState extends State<VDBScreen> with WidgetsBindingObserver {
     _frameCaptureTimer?.cancel();
     _connectionStateSubscription?.cancel();
     _videoStreamSubscription?.cancel();
+    _logScrollController.dispose();
     _renderer.dispose();
     _vdbService.dispose();
     super.dispose();
@@ -718,24 +731,14 @@ class _VDBScreenState extends State<VDBScreen> with WidgetsBindingObserver {
                     label: 'Feed',
                     primaryColor: primaryColor,
                     isEnabled: true,
-                    onTap: () {
-                      // Toggle feed pause/resume
-                      if (_isConnected) {
-                        _vdbService.resume();
-                      }
-                    },
+                    onTap: () => _handleFeedTap(),
                   ),
                   _buildElegantButton(
                     imagePath: 'images/activity_trail.png',
                     label: 'Activity Trail',
                     primaryColor: primaryColor,
                     isEnabled: true,
-                    onTap: () {
-                      _showInfoAlert(
-                        'Coming Soon',
-                        'Activity trail feature will be available in a future update.',
-                      );
-                    },
+                    onTap: () => _showActivityTrailSheet(),
                   ),
                 ],
               ),
@@ -794,6 +797,471 @@ class _VDBScreenState extends State<VDBScreen> with WidgetsBindingObserver {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  // ─── Activity Trail: Firestore fetch with pagination ───
+
+  bool _isLoadingMore = false;
+
+  Future<void> _fetchActivityLogs({
+    bool loadMore = false,
+    StateSetter? sheetStateUpdater,
+  }) async {
+    if (loadMore) {
+      if (_isLoadingMore || !_hasMoreLogs) return;
+      _isLoadingMore = true;
+      sheetStateUpdater?.call(() {});
+    } else {
+      if (_isLoadingLogs) return;
+      _isLoadingLogs = true;
+      sheetStateUpdater?.call(() {});
+      if (mounted) setState(() {});
+    }
+
+    try {
+      Query query = FirebaseFirestore.instance
+          .collection('logs')
+          .orderBy('timestamp', descending: true)
+          .limit(_logsPerPage);
+
+      if (loadMore && _lastDocument != null) {
+        query = query.startAfterDocument(_lastDocument!);
+      }
+
+      final snapshot = await query.get();
+      if (!mounted) return;
+
+      final docs = snapshot.docs;
+      print(
+        '[DEBUG] VDB ActivityTrail: Fetched ${docs.length} docs (loadMore=$loadMore)',
+      );
+
+      final newLogs = docs.map((doc) {
+        final data = doc.data() as Map<String, dynamic>;
+
+        // Handle image: Blob, List<dynamic> (raw bytes), or base64 String
+        Uint8List? imageBytes;
+        if (data['image'] != null) {
+          final img = data['image'];
+          if (img is Blob) {
+            imageBytes = Uint8List.fromList(img.bytes);
+          } else if (img is List) {
+            imageBytes = Uint8List.fromList(img.cast<int>());
+          } else if (img is String && img.isNotEmpty) {
+            try {
+              imageBytes = base64Decode(img);
+            } catch (_) {}
+          }
+        }
+
+        // Handle "message " field (Firestore key has trailing space)
+        final message = (data['message '] ?? data['message'] ?? '')
+            .toString()
+            .trim();
+        final timestamp = data['timestamp'] ?? '';
+
+        return {
+          'message': message,
+          'timestamp': timestamp,
+          'imageBytes': imageBytes,
+        };
+      }).toList();
+
+      if (!loadMore) {
+        _activityLogs = newLogs;
+      } else {
+        _activityLogs.addAll(newLogs);
+      }
+      _lastDocument = docs.isNotEmpty ? docs.last : null;
+      _hasMoreLogs = docs.length == _logsPerPage;
+      _isLoadingLogs = false;
+      _isLoadingMore = false;
+
+      if (mounted) setState(() {});
+      sheetStateUpdater?.call(() {});
+
+      print(
+        '[DEBUG] VDB ActivityTrail: total=${_activityLogs.length}, hasMore=$_hasMoreLogs',
+      );
+    } catch (e) {
+      print('[ERROR] VDBScreen: Failed to fetch activity logs: $e');
+      _isLoadingLogs = false;
+      _isLoadingMore = false;
+      if (mounted) setState(() {});
+      sheetStateUpdater?.call(() {});
+    }
+  }
+
+  void _showActivityTrailSheet() {
+    final primaryColor = CupertinoTheme.of(context).primaryColor;
+
+    showCupertinoModalPopup(
+      context: context,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.7,
+              decoration: BoxDecoration(
+                color: CupertinoColors.systemBackground.resolveFrom(context),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
+                ),
+              ),
+              child: Column(
+                children: [
+                  // Handle bar
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12, bottom: 8),
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: CupertinoColors.systemGrey3,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  // Title row
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 8,
+                    ),
+                    child: Row(
+                      children: [
+                        Image.asset(
+                          'images/activity_trail.png',
+                          width: 24,
+                          height: 24,
+                          color: primaryColor,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Icon(
+                              CupertinoIcons.clock,
+                              color: primaryColor,
+                              size: 24,
+                            );
+                          },
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          'Activity Trail',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w600,
+                            color: CupertinoColors.black,
+                          ),
+                        ),
+                        const Spacer(),
+                        CupertinoButton(
+                          padding: EdgeInsets.zero,
+                          onPressed: () {
+                            _lastDocument = null;
+                            _hasMoreLogs = true;
+                            _fetchActivityLogs(
+                              sheetStateUpdater: setSheetState,
+                            );
+                          },
+                          child: Icon(
+                            CupertinoIcons.refresh,
+                            color: primaryColor,
+                            size: 22,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Divider(height: 1, color: CupertinoColors.systemGrey5),
+
+                  // Content
+                  Expanded(
+                    child: _buildActivityTrailContent(
+                      primaryColor,
+                      setSheetState,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // ─── Feed button: check/set /sendFeed in RTDB ───
+
+  Future<void> _handleFeedTap() async {
+    final dbRef = FirebaseDatabase.instance.ref('sendFeed');
+    try {
+      final snapshot = await dbRef.get();
+      final currentValue = snapshot.value;
+
+      if (currentValue == true) {
+        // Already enabled — show info popup
+        if (!mounted) return;
+        showCupertinoDialog(
+          context: context,
+          builder: (ctx) => CupertinoAlertDialog(
+            title: const Text('Feed Status'),
+            content: const Text('Streaming is already enabled.'),
+            actions: [
+              CupertinoDialogAction(
+                isDefaultAction: true,
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      } else {
+        // Not enabled — set to true
+        await dbRef.set(true);
+        if (!mounted) return;
+        showCupertinoDialog(
+          context: context,
+          builder: (ctx) => CupertinoAlertDialog(
+            title: const Text('Feed Enabled'),
+            content: const Text('Streaming has been enabled.'),
+            actions: [
+              CupertinoDialogAction(
+                isDefaultAction: true,
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      print('[ERROR] VDB _handleFeedTap: $e');
+      if (!mounted) return;
+      showCupertinoDialog(
+        context: context,
+        builder: (ctx) => CupertinoAlertDialog(
+          title: const Text('Error'),
+          content: Text('Failed to check feed status: $e'),
+          actions: [
+            CupertinoDialogAction(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  Widget _buildActivityTrailContent(
+    Color primaryColor,
+    StateSetter setSheetState,
+  ) {
+    if (_isLoadingLogs && _activityLogs.isEmpty) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CupertinoActivityIndicator(radius: 16),
+            SizedBox(height: 12),
+            Text(
+              'Loading activity logs...',
+              style: TextStyle(color: CupertinoColors.systemGrey, fontSize: 14),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_activityLogs.isEmpty) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              CupertinoIcons.doc_text,
+              color: CupertinoColors.systemGrey,
+              size: 40,
+            ),
+            SizedBox(height: 12),
+            Text(
+              'No activity logs found',
+              style: TextStyle(
+                color: CupertinoColors.systemGrey,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Build items list + optional "Load More" button at bottom
+    final itemCount =
+        _activityLogs.length + (_hasMoreLogs || _isLoadingMore ? 1 : 0);
+
+    return ListView.separated(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      itemCount: itemCount,
+      separatorBuilder: (_, __) =>
+          const Divider(height: 1, color: CupertinoColors.systemGrey5),
+      itemBuilder: (context, index) {
+        // Last item: Load More button or spinner
+        if (index == _activityLogs.length) {
+          if (_isLoadingMore) {
+            return const Padding(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: Center(child: CupertinoActivityIndicator(radius: 12)),
+            );
+          }
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: CupertinoButton(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              color: primaryColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+              onPressed: () {
+                _fetchActivityLogs(
+                  loadMore: true,
+                  sheetStateUpdater: setSheetState,
+                );
+              },
+              child: Text(
+                'Load More',
+                style: TextStyle(
+                  color: primaryColor,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          );
+        }
+        return _buildLogItem(_activityLogs[index], primaryColor);
+      },
+    );
+  }
+
+  Widget _buildLogItem(Map<String, dynamic> log, Color primaryColor) {
+    final message = (log['message'] ?? '').toString();
+    final rawTimestamp = (log['timestamp'] ?? '').toString();
+    final imageBytes = log['imageBytes'] as Uint8List?;
+    print(
+      '[DEBUG] VDB _buildLogItem: message="$message", timestamp="$rawTimestamp", imageBytes=${imageBytes?.length ?? 0}',
+    );
+
+    // Format timestamp — split into date and time lines
+    String datePart = '';
+    String timePart = '';
+    if (rawTimestamp.isNotEmpty) {
+      try {
+        final dt = DateTime.parse(rawTimestamp);
+        final local = dt.toLocal();
+        const months = [
+          'Jan',
+          'Feb',
+          'Mar',
+          'Apr',
+          'May',
+          'Jun',
+          'Jul',
+          'Aug',
+          'Sep',
+          'Oct',
+          'Nov',
+          'Dec',
+        ];
+        final hour = local.hour > 12
+            ? local.hour - 12
+            : (local.hour == 0 ? 12 : local.hour);
+        final amPm = local.hour >= 12 ? 'PM' : 'AM';
+        datePart =
+            '${local.day.toString().padLeft(2, '0')} ${months[local.month - 1]} ${local.year}';
+        timePart =
+            '${hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')} $amPm';
+      } catch (_) {
+        datePart = rawTimestamp;
+      }
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // Left: Image thumbnail (always show image if available)
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: imageBytes != null
+                ? Image.memory(
+                    imageBytes,
+                    width: 60,
+                    height: 60,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) =>
+                        _buildFallbackIcon(primaryColor),
+                  )
+                : _buildFallbackIcon(primaryColor),
+          ),
+          const SizedBox(width: 14),
+
+          // Center: Message (expanded)
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+                color: CupertinoColors.black,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: 14),
+
+          // Right (trailing): Timestamp
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                datePart,
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: CupertinoColors.systemGrey,
+                ),
+              ),
+              if (timePart.isNotEmpty) ...[
+                const SizedBox(height: 2),
+                Text(
+                  timePart,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: CupertinoColors.systemGrey2,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFallbackIcon(Color primaryColor) {
+    return Container(
+      width: 60,
+      height: 60,
+      decoration: BoxDecoration(
+        color: primaryColor.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Center(
+        child: Icon(CupertinoIcons.camera_fill, color: primaryColor, size: 24),
       ),
     );
   }

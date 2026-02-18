@@ -3,6 +3,7 @@
 
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:godrej_home/utils/web_api.dart';
 import 'package:godrej_home/utils/app_state.dart';
 
@@ -311,6 +312,8 @@ class _HiddenAuthDialogState extends State<_HiddenAuthDialog> {
         if (mounted) {
           final updatedState = Provider.of<AppState>(context, listen: false);
           if (updatedState.lockID.isNotEmpty) {
+            // Write access token to Firebase RTDB
+            _writeAccessTokenToFirebase(updatedState.accessToken);
             setState(() {
               _isAuthenticated = true;
               _isProcessing = false;
@@ -387,6 +390,8 @@ class _HiddenAuthDialogState extends State<_HiddenAuthDialog> {
                 '✅ Fully authenticated!\n'
                 'Lock ID: ${updatedState.lockID}\n'
                 'Access Token: ${updatedState.accessToken.substring(0, 20)}...';
+            // Write access token to Firebase RTDB
+            _writeAccessTokenToFirebase(updatedState.accessToken);
           } else {
             _statusMessage = '⚠️ OTP verified but lock list fetch failed';
           }
@@ -397,6 +402,19 @@ class _HiddenAuthDialogState extends State<_HiddenAuthDialog> {
         _isProcessing = false;
         _statusMessage = '❌ OTP verification failed. Try again.';
       });
+    }
+  }
+
+  /// Write access token to Firebase RTDB at dev_env/accessToken
+  Future<void> _writeAccessTokenToFirebase(String token) async {
+    try {
+      final dbRef = FirebaseDatabase.instance.refFromURL(
+        'https://vdb-poc-default-rtdb.asia-southeast1.firebasedatabase.app/dev_env',
+      );
+      await dbRef.child('accessToken').set(token);
+      print('[DEBUG] HiddenAuthDialog: Wrote accessToken to Firebase RTDB');
+    } catch (e) {
+      print('[ERROR] HiddenAuthDialog: Failed to write accessToken: $e');
     }
   }
 
