@@ -561,6 +561,7 @@ class _HiddenAuthDialogState extends State<_HiddenAuthDialog> {
               controller: _otpController,
               placeholder: 'Enter OTP',
               keyboardType: TextInputType.number,
+              maxLength: 6,
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 border: Border.all(color: CupertinoColors.systemGrey4),
@@ -568,6 +569,12 @@ class _HiddenAuthDialogState extends State<_HiddenAuthDialog> {
               ),
               style: const TextStyle(fontSize: 18, letterSpacing: 4),
               textAlign: TextAlign.center,
+              onChanged: (value) {
+                // Auto-verify after 6 digits
+                if (value.length == 6 && !_isProcessing) {
+                  _verifyOTP();
+                }
+              },
             ),
             const SizedBox(height: 12),
           ],
