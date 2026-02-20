@@ -59,6 +59,10 @@ class _VDBScreenState extends State<VDBScreen> with WidgetsBindingObserver {
   final ScrollController _logScrollController = ScrollController();
   static const int _logsPerPage = 20;
 
+  // Surveillance mode state
+  bool _isSurveillanceEnabled = false;
+  bool _isSurveillanceLoading = false;
+
   @override
   void initState() {
     super.initState();
@@ -66,6 +70,7 @@ class _VDBScreenState extends State<VDBScreen> with WidgetsBindingObserver {
     _initRenderer();
     _connectOnPageInit();
     _fetchActivityLogs();
+    _readSurveillanceMode();
   }
 
   @override
@@ -388,6 +393,96 @@ class _VDBScreenState extends State<VDBScreen> with WidgetsBindingObserver {
     return '${minutes.toString().padLeft(2, '0')}:${remainingSeconds.toString().padLeft(2, '0')}';
   }
 
+  // ─── Surveillance Mode: read initial value ───
+  Future<void> _readSurveillanceMode() async {
+    try {
+      final dbRef = FirebaseDatabase.instance.refFromURL(
+        'https://vdb-poc-default-rtdb.asia-southeast1.firebasedatabase.app/dev_env',
+      );
+      final snapshot = await dbRef.child('survailanceModeEnabled').get();
+      if (mounted && snapshot.exists) {
+        setState(() {
+          _isSurveillanceEnabled = snapshot.value == true;
+        });
+      }
+    } catch (e) {
+      print('[ERROR] VDB _readSurveillanceMode: $e');
+    }
+  }
+
+  // ─── Surveillance Mode: toggle handler ───
+  Future<void> _toggleSurveillanceMode(bool newValue) async {
+    setState(() {
+      _isSurveillanceLoading = true;
+    });
+
+    try {
+      final dbRef = FirebaseDatabase.instance.refFromURL(
+        'https://vdb-poc-default-rtdb.asia-southeast1.firebasedatabase.app/dev_env',
+      );
+      await dbRef.child('survailanceModeEnabled').set(newValue);
+
+      // Manual 1-second loader
+      await Future.delayed(const Duration(seconds: 1));
+
+      if (!mounted) return;
+      setState(() {
+        _isSurveillanceEnabled = newValue;
+        _isSurveillanceLoading = false;
+      });
+
+      // Success popup
+      showCupertinoDialog(
+        context: context,
+        builder: (ctx) => CupertinoAlertDialog(
+          title: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: const [
+              Icon(
+                CupertinoIcons.check_mark_circled_solid,
+                color: CupertinoColors.activeGreen,
+                size: 24,
+              ),
+              SizedBox(width: 8),
+              Text('Success'),
+            ],
+          ),
+          content: Text(
+            newValue
+                ? 'Surveillance Mode has been enabled.'
+                : 'Surveillance Mode has been disabled.',
+          ),
+          actions: [
+            CupertinoDialogAction(
+              isDefaultAction: true,
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      print('[ERROR] VDB _toggleSurveillanceMode: $e');
+      if (!mounted) return;
+      setState(() {
+        _isSurveillanceLoading = false;
+      });
+      showCupertinoDialog(
+        context: context,
+        builder: (ctx) => CupertinoAlertDialog(
+          title: const Text('Error'),
+          content: Text('Failed to update surveillance mode: $e'),
+          actions: [
+            CupertinoDialogAction(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
@@ -426,7 +521,7 @@ class _VDBScreenState extends State<VDBScreen> with WidgetsBindingObserver {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Title with icon - "VDB"
+                  // Title with icon - "VDB" + Surveillance Mode toggle
                   Row(
                     children: [
                       Container(
@@ -447,13 +542,37 @@ class _VDBScreenState extends State<VDBScreen> with WidgetsBindingObserver {
                       ),
                       const SizedBox(width: 15),
                       Text(
-                        'VDB',
+                        'Video Door Bell',
                         style: TextStyle(
                           fontSize: 26,
                           fontWeight: FontWeight.w600,
                           color: CupertinoColors.black,
                         ),
                       ),
+                      const Spacer(),
+                      // Surveillance Mode toggle
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Surveillance Mode',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                              color: CupertinoColors.systemGrey,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          _isSurveillanceLoading
+                              ? const CupertinoActivityIndicator(radius: 12)
+                              : CupertinoSwitch(
+                                  value: _isSurveillanceEnabled,
+                                  activeTrackColor: primaryColor,
+                                  onChanged: _toggleSurveillanceMode,
+                                ),
+                        ],
+                      ),
+                      const SizedBox(width: 20.0),
                     ],
                   ),
                   const SizedBox(height: 30),
