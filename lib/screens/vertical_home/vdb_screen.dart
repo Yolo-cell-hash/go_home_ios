@@ -1015,100 +1015,212 @@ class _VDBScreenState extends State<VDBScreen> with WidgetsBindingObserver {
 
   void _showActivityTrailSheet() {
     final primaryColor = CupertinoTheme.of(context).primaryColor;
+    final screenSize = MediaQuery.of(context).size;
+    final isTablet = screenSize.shortestSide >= 600;
 
-    showCupertinoModalPopup(
-      context: context,
-      builder: (sheetContext) {
-        return StatefulBuilder(
-          builder: (context, setSheetState) {
-            return Container(
-              height: MediaQuery.of(context).size.height * 0.7,
-              decoration: BoxDecoration(
-                color: CupertinoColors.systemBackground.resolveFrom(context),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(20),
-                  topRight: Radius.circular(20),
-                ),
-              ),
-              child: Column(
-                children: [
-                  // Handle bar
-                  Padding(
-                    padding: const EdgeInsets.only(top: 12, bottom: 8),
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: CupertinoColors.systemGrey3,
-                        borderRadius: BorderRadius.circular(2),
+    if (isTablet) {
+      // iPad: show as a centered dialog for better landscape layout
+      showCupertinoDialog(
+        context: context,
+        barrierDismissible: true,
+        builder: (dialogContext) {
+          return StatefulBuilder(
+            builder: (context, setSheetState) {
+              return Center(
+                child: Container(
+                  width: screenSize.width * 0.70,
+                  height: screenSize.height * 0.80,
+                  decoration: BoxDecoration(
+                    color: CupertinoColors.systemBackground.resolveFrom(
+                      context,
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.25),
+                        blurRadius: 30,
+                        offset: const Offset(0, 10),
                       ),
-                    ),
+                    ],
                   ),
-                  // Title row
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 8,
-                    ),
-                    child: Row(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: Column(
                       children: [
-                        Image.asset(
-                          'images/activity_trail.png',
-                          width: 24,
-                          height: 24,
-                          color: primaryColor,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Icon(
-                              CupertinoIcons.clock,
-                              color: primaryColor,
-                              size: 24,
-                            );
-                          },
-                        ),
-                        const SizedBox(width: 10),
-                        Text(
-                          'Activity Trail',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w600,
-                            color: CupertinoColors.black,
+                        // Title row with close button
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 16,
+                          ),
+                          child: Row(
+                            children: [
+                              Image.asset(
+                                'images/activity_trail.png',
+                                width: 28,
+                                height: 28,
+                                color: primaryColor,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Icon(
+                                    CupertinoIcons.clock,
+                                    color: primaryColor,
+                                    size: 28,
+                                  );
+                                },
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                'Activity Trail',
+                                style: TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.w600,
+                                  color: CupertinoColors.black,
+                                  decoration: TextDecoration.none,
+                                ),
+                              ),
+                              const Spacer(),
+                              CupertinoButton(
+                                padding: EdgeInsets.zero,
+                                onPressed: () {
+                                  _lastDocument = null;
+                                  _hasMoreLogs = true;
+                                  _fetchActivityLogs(
+                                    sheetStateUpdater: setSheetState,
+                                  );
+                                },
+                                child: Icon(
+                                  CupertinoIcons.refresh,
+                                  color: primaryColor,
+                                  size: 24,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              GestureDetector(
+                                onTap: () => Navigator.pop(dialogContext),
+                                child: Icon(
+                                  CupertinoIcons.xmark_circle_fill,
+                                  color: CupertinoColors.systemGrey3,
+                                  size: 28,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        const Spacer(),
-                        CupertinoButton(
-                          padding: EdgeInsets.zero,
-                          onPressed: () {
-                            _lastDocument = null;
-                            _hasMoreLogs = true;
-                            _fetchActivityLogs(
-                              sheetStateUpdater: setSheetState,
-                            );
-                          },
-                          child: Icon(
-                            CupertinoIcons.refresh,
-                            color: primaryColor,
-                            size: 22,
+                        Divider(height: 1, color: CupertinoColors.systemGrey5),
+
+                        // Content
+                        Expanded(
+                          child: _buildActivityTrailContent(
+                            primaryColor,
+                            setSheetState,
+                            isTablet: true,
                           ),
                         ),
                       ],
                     ),
                   ),
-                  Divider(height: 1, color: CupertinoColors.systemGrey5),
-
-                  // Content
-                  Expanded(
-                    child: _buildActivityTrailContent(
-                      primaryColor,
-                      setSheetState,
-                    ),
+                ),
+              );
+            },
+          );
+        },
+      );
+    } else {
+      // iPhone: keep existing bottom sheet
+      showCupertinoModalPopup(
+        context: context,
+        builder: (sheetContext) {
+          return StatefulBuilder(
+            builder: (context, setSheetState) {
+              return Container(
+                height: screenSize.height * 0.7,
+                decoration: BoxDecoration(
+                  color: CupertinoColors.systemBackground.resolveFrom(context),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(20),
+                    topRight: Radius.circular(20),
                   ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
+                ),
+                child: Column(
+                  children: [
+                    // Handle bar
+                    Padding(
+                      padding: const EdgeInsets.only(top: 12, bottom: 8),
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: CupertinoColors.systemGrey3,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    // Title row
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 8,
+                      ),
+                      child: Row(
+                        children: [
+                          Image.asset(
+                            'images/activity_trail.png',
+                            width: 24,
+                            height: 24,
+                            color: primaryColor,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Icon(
+                                CupertinoIcons.clock,
+                                color: primaryColor,
+                                size: 24,
+                              );
+                            },
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            'Activity Trail',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w600,
+                              color: CupertinoColors.black,
+                            ),
+                          ),
+                          const Spacer(),
+                          CupertinoButton(
+                            padding: EdgeInsets.zero,
+                            onPressed: () {
+                              _lastDocument = null;
+                              _hasMoreLogs = true;
+                              _fetchActivityLogs(
+                                sheetStateUpdater: setSheetState,
+                              );
+                            },
+                            child: Icon(
+                              CupertinoIcons.refresh,
+                              color: primaryColor,
+                              size: 22,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Divider(height: 1, color: CupertinoColors.systemGrey5),
+
+                    // Content
+                    Expanded(
+                      child: _buildActivityTrailContent(
+                        primaryColor,
+                        setSheetState,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          );
+        },
+      );
+    }
   }
 
   // ─── Feed button: check/set /sendFeed in RTDB ───
@@ -1176,8 +1288,9 @@ class _VDBScreenState extends State<VDBScreen> with WidgetsBindingObserver {
 
   Widget _buildActivityTrailContent(
     Color primaryColor,
-    StateSetter setSheetState,
-  ) {
+    StateSetter setSheetState, {
+    bool isTablet = false,
+  }) {
     if (_isLoadingLogs && _activityLogs.isEmpty) {
       return const Center(
         child: Column(
@@ -1223,7 +1336,10 @@ class _VDBScreenState extends State<VDBScreen> with WidgetsBindingObserver {
         _activityLogs.length + (_hasMoreLogs || _isLoadingMore ? 1 : 0);
 
     return ListView.separated(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      padding: EdgeInsets.symmetric(
+        horizontal: isTablet ? 28 : 20,
+        vertical: isTablet ? 14 : 10,
+      ),
       itemCount: itemCount,
       separatorBuilder: (_, __) =>
           const Divider(height: 1, color: CupertinoColors.systemGrey5),
@@ -1259,12 +1375,20 @@ class _VDBScreenState extends State<VDBScreen> with WidgetsBindingObserver {
             ),
           );
         }
-        return _buildLogItem(_activityLogs[index], primaryColor);
+        return _buildLogItem(
+          _activityLogs[index],
+          primaryColor,
+          isTablet: isTablet,
+        );
       },
     );
   }
 
-  Widget _buildLogItem(Map<String, dynamic> log, Color primaryColor) {
+  Widget _buildLogItem(
+    Map<String, dynamic> log,
+    Color primaryColor, {
+    bool isTablet = false,
+  }) {
     final rawMessage = (log['message'] ?? '').toString();
     final rawTimestamp = (log['timestamp'] ?? '').toString();
     final imageBytes = log['imageBytes'] as Uint8List?;
@@ -1341,6 +1465,13 @@ class _VDBScreenState extends State<VDBScreen> with WidgetsBindingObserver {
       }
     }
 
+    // Responsive sizes
+    final double thumbSize = isTablet ? 72 : 52;
+    final double iconSize = isTablet ? 26 : 22;
+    final double messageFontSize = isTablet ? 16 : 14;
+    final double statusFontSize = isTablet ? 14 : 12;
+    final double timeFontSize = isTablet ? 13 : 11;
+
     return GestureDetector(
       onTap: () => _showLogDetail(
         imageBytes: imageBytes,
@@ -1350,9 +1481,13 @@ class _VDBScreenState extends State<VDBScreen> with WidgetsBindingObserver {
         statusIcon: statusIcon,
         datePart: datePart,
         timePart: timePart,
+        isTablet: isTablet,
       ),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+        padding: EdgeInsets.symmetric(
+          vertical: isTablet ? 14 : 10,
+          horizontal: isTablet ? 8 : 4,
+        ),
         decoration: BoxDecoration(
           color: isSuccess
               ? const Color(0x0834C759)
@@ -1365,24 +1500,24 @@ class _VDBScreenState extends State<VDBScreen> with WidgetsBindingObserver {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             // Status icon
-            Icon(statusIcon, color: statusColor, size: 22),
-            const SizedBox(width: 10),
+            Icon(statusIcon, color: statusColor, size: iconSize),
+            SizedBox(width: isTablet ? 14 : 10),
 
             // Image thumbnail
             ClipRRect(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
               child: imageBytes != null
                   ? Image.memory(
                       imageBytes,
-                      width: 52,
-                      height: 52,
+                      width: thumbSize,
+                      height: thumbSize,
                       fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) =>
-                          _buildFallbackIcon(primaryColor),
+                          _buildFallbackIcon(primaryColor, isTablet: isTablet),
                     )
-                  : _buildFallbackIcon(primaryColor),
+                  : _buildFallbackIcon(primaryColor, isTablet: isTablet),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: isTablet ? 16 : 12),
 
             // Message (expanded)
             Expanded(
@@ -1394,7 +1529,7 @@ class _VDBScreenState extends State<VDBScreen> with WidgetsBindingObserver {
                     Text(
                       statusLabel,
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: statusFontSize,
                         fontWeight: FontWeight.w700,
                         color: statusColor,
                       ),
@@ -1402,8 +1537,8 @@ class _VDBScreenState extends State<VDBScreen> with WidgetsBindingObserver {
                   if (statusLabel.isNotEmpty) const SizedBox(height: 2),
                   Text(
                     displayMessage,
-                    style: const TextStyle(
-                      fontSize: 14,
+                    style: TextStyle(
+                      fontSize: messageFontSize,
                       fontWeight: FontWeight.w500,
                       color: CupertinoColors.black,
                     ),
@@ -1413,7 +1548,7 @@ class _VDBScreenState extends State<VDBScreen> with WidgetsBindingObserver {
                 ],
               ),
             ),
-            const SizedBox(width: 10),
+            SizedBox(width: isTablet ? 14 : 10),
 
             // Timestamp (trailing)
             Column(
@@ -1422,8 +1557,8 @@ class _VDBScreenState extends State<VDBScreen> with WidgetsBindingObserver {
               children: [
                 Text(
                   datePart,
-                  style: const TextStyle(
-                    fontSize: 11,
+                  style: TextStyle(
+                    fontSize: timeFontSize,
                     color: CupertinoColors.systemGrey,
                   ),
                 ),
@@ -1431,8 +1566,8 @@ class _VDBScreenState extends State<VDBScreen> with WidgetsBindingObserver {
                   const SizedBox(height: 2),
                   Text(
                     timePart,
-                    style: const TextStyle(
-                      fontSize: 11,
+                    style: TextStyle(
+                      fontSize: timeFontSize,
                       color: CupertinoColors.systemGrey2,
                     ),
                   ),
@@ -1454,6 +1589,7 @@ class _VDBScreenState extends State<VDBScreen> with WidgetsBindingObserver {
     required IconData statusIcon,
     required String datePart,
     required String timePart,
+    bool isTablet = false,
   }) {
     showCupertinoDialog(
       context: context,
@@ -1461,8 +1597,9 @@ class _VDBScreenState extends State<VDBScreen> with WidgetsBindingObserver {
       builder: (ctx) {
         return Center(
           child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 24),
-            padding: const EdgeInsets.all(20),
+            width: isTablet ? MediaQuery.of(ctx).size.width * 0.45 : null,
+            margin: EdgeInsets.symmetric(horizontal: isTablet ? 0 : 24),
+            padding: EdgeInsets.all(isTablet ? 28 : 20),
             decoration: BoxDecoration(
               color: CupertinoColors.systemBackground.resolveFrom(ctx),
               borderRadius: BorderRadius.circular(20),
@@ -1595,16 +1732,21 @@ class _VDBScreenState extends State<VDBScreen> with WidgetsBindingObserver {
     );
   }
 
-  Widget _buildFallbackIcon(Color primaryColor) {
+  Widget _buildFallbackIcon(Color primaryColor, {bool isTablet = false}) {
+    final double size = isTablet ? 72 : 60;
     return Container(
-      width: 60,
-      height: 60,
+      width: size,
+      height: size,
       decoration: BoxDecoration(
         color: primaryColor.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
       ),
       child: Center(
-        child: Icon(CupertinoIcons.camera_fill, color: primaryColor, size: 24),
+        child: Icon(
+          CupertinoIcons.camera_fill,
+          color: primaryColor,
+          size: isTablet ? 30 : 24,
+        ),
       ),
     );
   }

@@ -675,7 +675,7 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
 
   // User profile presets for automation-flags
   static const Map<String, Map<String, dynamic>> _profilePresets = {
-    'sd': {'light': true, 'party': true, 'fan': true, 'fan speed': 5},
+    'sd': {'light': true, 'party': true, 'fan': true, 'fan-speed': 5},
     'deodatta': {
       'light': true,
       'light intensity': 255,
