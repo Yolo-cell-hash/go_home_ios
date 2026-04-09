@@ -21,6 +21,7 @@ import 'vertical_home/bed_storage_screen.dart';
 import 'vertical_home/wardrobe_screen.dart';
 import 'vertical_home/light_control_screen.dart';
 import 'vertical_home/fan_control_screen.dart';
+import 'vertical_home/ac_control_screen.dart';
 
 /// Main vertical home screen with snap scrolling pages
 class VerticalHomeScreen extends StatefulWidget {
@@ -98,8 +99,8 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
     2,
     1,
     2,
-    0,
-  ]; // AC greyed out
+    1,
+  ]; // AC starts as red (off), Firebase will update
 
   // Kitchen icons (6)
   // Index: 0=WindowSensor, 1=GasSensor, 2=Chimney, 3=Fan, 4=Light(grey), 5=Light
@@ -110,11 +111,11 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
   late List<int> _bedroomStatus = [
     1,
     2,
-    0,
+    1,
     2,
     0,
     0,
-  ]; // AC and Wardrobe greyed out
+  ]; // AC starts as red (off), Firebase will update; Wardrobe greyed out
 
   // Control items data for each room (with dbKey for Firebase mapping)
   static const List<Map<String, dynamic>> livingRoomControls = [
@@ -138,11 +139,7 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
       'label': 'Fire Sensor',
       'dbKey': 'fire-sensor',
     },
-    {
-      'icon': 'images/ac.png',
-      'label': 'Air Conditioner',
-      'dbKey': null, // Disabled/greyed out
-    },
+    {'icon': 'images/ac.png', 'label': 'Air Conditioner', 'dbKey': 'ac'},
   ];
 
   static const List<Map<String, dynamic>> kitchenControls = [
@@ -173,11 +170,7 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
       'label': 'Fire Sensor',
       'dbKey': 'fire-sensor',
     },
-    {
-      'icon': 'images/ac.png',
-      'label': 'Air Conditioner',
-      'dbKey': null, // Disabled/greyed out
-    },
+    {'icon': 'images/ac.png', 'label': 'Air Conditioner', 'dbKey': 'ac'},
     {
       'icon': 'images/bed_storage.png',
       'label': 'Bed Storage',
@@ -848,13 +841,13 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
     final List<Map<String, dynamic>> scenePresets = [
       // Good Morning
       {
-        'light intensity': 150,
-        'light-hex-value': '0,103,255',
+        'light intensity': 50,
+        'light-hex-value': '255,255,255',
         'camera': true,
         'door-lock': true,
         'bed-storage': true,
         'vdb': true,
-        'light': true,
+        'light': false,
         'fan': true,
         'fan-speed': 3,
         'isFire': true,
@@ -864,7 +857,7 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
       },
       // Good Night
       {
-        'light intensity': 50,
+        'light intensity': 120,
         'light-hex-value': '255,0,193',
         'camera': true,
         'door-lock': true,
@@ -926,6 +919,21 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
       }
       // Write scene name to /profile so that welcome screen shows "Mumbai Home"
       await _dbRef.child('profile').set(sceneNames[index]);
+
+      // Toggle survailanceModeEnabled in /dev_env/ based on scene
+      final devEnvRef = FirebaseDatabase.instance.ref('dev_env');
+      if (index == 3) {
+        // Vacation mode → enable surveillance
+        await devEnvRef.child('survailanceModeEnabled').set(true);
+        print('[DEBUG] survailanceModeEnabled set to true (Vacation mode)');
+      } else {
+        // Any other scene → disable surveillance
+        await devEnvRef.child('survailanceModeEnabled').set(false);
+        print(
+          '[DEBUG] survailanceModeEnabled set to false (non-Vacation mode)',
+        );
+      }
+
       print('[DEBUG] Scene $index preset values + profile written to Firebase');
     } catch (e) {
       print('[ERROR] Failed to write scene preset to Firebase: $e');
@@ -1129,6 +1137,9 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
       case 5: // Fan
         targetScreen = const FanControlScreen();
         break;
+      case 8: // Air Conditioner
+        targetScreen = const AcControlScreen();
+        break;
       default:
         print('[DEBUG] No long press navigation for living room index: $index');
         return;
@@ -1179,6 +1190,9 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
     Widget? targetScreen;
 
     switch (index) {
+      case 2: // Air Conditioner
+        targetScreen = const AcControlScreen();
+        break;
       case 3: // Bed Storage
         targetScreen = const BedStorageScreen();
         break;

@@ -1,6 +1,8 @@
 // vertical_home/door_lock_screen.dart
 // Door lock control screen
 
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
@@ -36,11 +38,16 @@ class _DoorLockScreenState extends State<DoorLockScreen> {
     'automation-flags',
   );
 
+  // Surveillance mode state (from /dev_env/survailanceModeEnabled)
+  bool _isSurveillanceMode = false;
+  StreamSubscription<DatabaseEvent>? _surveillanceSubscription;
+
   final WebApi _webApi = WebApi();
 
   @override
   void initState() {
     super.initState();
+    _setupSurveillanceListener();
     // Ensure valid token before fetching data, then fetch
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final hasToken = await WebApi.ensureValidToken(context);
@@ -51,6 +58,31 @@ class _DoorLockScreenState extends State<DoorLockScreen> {
         print('[DEBUG] DoorLockScreen: No valid token, skipping API calls');
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _surveillanceSubscription?.cancel();
+    super.dispose();
+  }
+
+  /// Listen to /dev_env/survailanceModeEnabled in real-time
+  void _setupSurveillanceListener() {
+    final devEnvRef = FirebaseDatabase.instance.ref('dev_env');
+    _surveillanceSubscription = devEnvRef
+        .child('survailanceModeEnabled')
+        .onValue
+        .listen((event) {
+          if (mounted) {
+            final value = event.snapshot.value as bool? ?? false;
+            if (value != _isSurveillanceMode) {
+              setState(() {
+                _isSurveillanceMode = value;
+              });
+              print('[DEBUG] DoorLockScreen: survailanceModeEnabled = $value');
+            }
+          }
+        });
   }
 
   Future<void> _fetchActivityTrails() async {
@@ -631,6 +663,7 @@ class _DoorLockScreenState extends State<DoorLockScreen> {
   }
 
   Widget _buildBatteryCard(Color primaryColor) {
+    final batteryPercent = (batteryLevel * 100).round();
     return Container(
       padding: EdgeInsets.all(15),
       decoration: BoxDecoration(
@@ -649,14 +682,59 @@ class _DoorLockScreenState extends State<DoorLockScreen> {
             ),
           ),
           SizedBox(width: 20),
-          Text(
-            'Battery Level',
-            style: TextStyle(
-              fontSize: 16,
-              color: primaryColor,
-              fontWeight: FontWeight.w500,
-            ),
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Battery Level',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: primaryColor,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              SizedBox(height: 4),
+              Text(
+                '$batteryPercent%',
+                style: TextStyle(
+                  fontSize: 28,
+                  color: primaryColor,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
           ),
+          // Surveillance mode indicator
+          if (_isSurveillanceMode) ...[
+            SizedBox(width: 20),
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFF4CAF50).withOpacity(0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    CupertinoIcons.eye_fill,
+                    color: const Color(0xFF4CAF50),
+                    size: 16,
+                  ),
+                  SizedBox(width: 6),
+                  Text(
+                    'Surveillance',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: const Color(0xFF4CAF50),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
