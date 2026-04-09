@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:vibration/vibration.dart';
 import 'package:godrej_home/services/notification_service.dart';
+import 'package:godrej_home/services/preset_manager.dart';
 
 // Import modular screen components
 import 'vertical_home/welcome_screen.dart';
@@ -41,6 +42,11 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
     'automation-flags',
   );
 
+  // Firebase reference for presets (to fetch known users dynamically)
+  final DatabaseReference _presetsRef = FirebaseDatabase.instance.ref(
+    'presets',
+  );
+
   // Firebase reference for automation-flags/profile monitoring
   StreamSubscription<DatabaseEvent>? _profileSubscription;
 
@@ -55,8 +61,8 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
   // Active user name parsed from /dev_env/ack
   String? _activeUserName;
 
-  // Known users with avatar images
-  static const Set<String> _knownUsers = {'deodatta', 'parag', 'sd', 'jinay'};
+  // Known users fetched dynamically from Firebase /presets
+  Set<String> _knownUsers = {};
 
   // Fire and window alert states
   bool _isFireAlert = false;
@@ -148,7 +154,7 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
       'label': 'Window Sensor',
       'dbKey': 'window-sensor',
     },
-    {'icon': 'images/gas_sensor.png', 'label': 'Gas Sensor', 'dbKey': null},
+    {'icon': 'images/gas_sensor.png', 'label': 'Gas Sensor', 'dbKey': 'fire-sensor'},
     {
       'icon': 'images/chimney.png',
       'label': 'Chimney',
@@ -188,11 +194,57 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
   void initState() {
     super.initState();
     print('[DEBUG] VerticalHomeScreen initState - fetching Firebase data');
+    PresetManager.initDefaults(); // Ensure scene presets exist in SharedPreferences
+    _fetchKnownUsers(); // Fetch known users from /presets before profile listener
     _fetchFirebaseState();
     _setupFirebaseListener();
     _setupProfileListener();
     // NOTE: BLE is intentionally NOT initialized here
     // BLE initialization happens in BedStorageScreen when user navigates there
+  }
+
+  /// Fetch known user names dynamically from Firebase /presets (updates state)
+  /// Each child key under /presets is treated as a known username
+  Future<void> _fetchKnownUsers() async {
+    print('[DEBUG] Fetching known users from /presets...');
+    try {
+      final snapshot = await _presetsRef.get();
+      if (snapshot.exists && snapshot.value is Map) {
+        final data = Map<String, dynamic>.from(snapshot.value as Map);
+        setState(() {
+          _knownUsers = data.keys
+              .map((k) => k.toString().toLowerCase())
+              .toSet();
+        });
+        print('[DEBUG] Known users fetched from /presets: $_knownUsers');
+      } else {
+        print('[DEBUG] No presets found in Firebase');
+      }
+    } catch (e) {
+      print('[ERROR] Failed to fetch known users from /presets: $e');
+    }
+  }
+
+  /// Fetch and return the latest set of user keys from Firebase /presets.
+  /// Called on-demand by the profile dropdown whenever it opens.
+  Future<Set<String>> _refreshKnownUsers() async {
+    print('[DEBUG] Refreshing known users from /presets (on-demand)...');
+    try {
+      final snapshot = await _presetsRef.get();
+      if (snapshot.exists && snapshot.value is Map) {
+        final data = Map<String, dynamic>.from(snapshot.value as Map);
+        final fresh = data.keys.map((k) => k.toString().toLowerCase()).toSet();
+        // Also update local state so the profile listener stays in sync
+        if (mounted) {
+          setState(() => _knownUsers = fresh);
+        }
+        print('[DEBUG] Known users refreshed: $fresh');
+        return fresh;
+      }
+    } catch (e) {
+      print('[ERROR] Failed to refresh known users: $e');
+    }
+    return _knownUsers; // fallback to cached
   }
 
   // Map scene names (lowercase) to their indices for restoring selection
@@ -587,6 +639,8 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
                 onIconLongPress: _handleWelcomeIconLongPress,
                 activeUserName: _activeUserName,
                 onProfileSelected: _handleProfileSelected,
+                knownUsers: _knownUsers,
+                onRefreshUsers: _refreshKnownUsers,
               ),
               // Screen 2: Home Scenes & Spaces
               HomeScenesScreenWidget(
@@ -666,48 +720,19 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
     );
   }
 
-  // User profile presets for automation-flags
-  static const Map<String, Map<String, dynamic>> _profilePresets = {
-    'sd': {'light': true, 'party': true, 'fan': true, 'fan-speed': 5},
-    'deodatta': {
-      'light': true,
-      'light intensity': 255,
-      'light-hex-value': '255, 0, 0',
-      'party': false,
-      'fan': true,
-      'fan-speed': 1,
-    },
-    'parag': {
-      'light': true,
-      'light intensity': 255,
-      'light-hex-value': '0, 255, 0',
-      'party': false,
-      'fan': false,
-    },
-    'jinay': {
-      'light': true,
-      'light intensity': 255,
-      'light-hex-value': '0,0,255',
-      'party': false,
-      'fan': true,
-      'fan-speed': 3,
-    },
-  };
+  // Cached user preset fetched from Firebase /presets/{user} on profile selection.
+  // Used by _handleToggleWithSceneCheck to detect overrides.
+  Map<String, dynamic>? _activeUserPreset;
 
-  // Display names for profiles
-  static const Map<String, String> _profileDisplayNames = {
-    'sd': 'Sayali',
-    'deodatta': 'Deodatta',
-    'parag': 'Parag',
-    'jinay': 'Jinay',
-  };
-
-  /// Handle profile selection from dropdown
+  /// Handle profile selection from dropdown.
+  /// Fetches preset purely from Firebase /presets/{userName} and writes to
+  /// /automation-flags. Caches the fetched preset in _activeUserPreset for
+  /// override detection on subsequent manual toggles.
   Future<void> _handleProfileSelected(String userName) async {
-    final preset = _profilePresets[userName];
-    if (preset == null) return;
-
-    final displayName = _profileDisplayNames[userName] ?? userName;
+    // Capitalize display name (title-case)
+    final displayName = userName.isNotEmpty
+        ? userName[0].toUpperCase() + userName.substring(1).toLowerCase()
+        : userName;
     print('[DEBUG] Profile selected: $userName ($displayName)');
 
     // Show loader overlay
@@ -733,15 +758,38 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
     );
 
     try {
-      // Write all preset values to Firebase
-      for (final entry in preset.entries) {
-        await _dbRef.child(entry.key).set(entry.value);
+      // Fetch preset data from Firebase /presets/{userName}
+      Map<String, dynamic>? preset;
+      try {
+        final presetSnapshot = await _presetsRef.child(userName).get();
+        if (presetSnapshot.exists && presetSnapshot.value is Map) {
+          preset = Map<String, dynamic>.from(presetSnapshot.value as Map);
+          print(
+            '[DEBUG] Preset fetched from Firebase /presets/$userName: $preset',
+          );
+        }
+      } catch (e) {
+        print('[ERROR] Failed to fetch preset from /presets/$userName: $e');
       }
-      print('[DEBUG] Profile preset written to Firebase for $userName');
+
+      if (preset != null) {
+        // Cache the preset for override detection on manual toggles
+        _activeUserPreset = Map<String, dynamic>.from(preset);
+
+        // Write all preset values to Firebase automation-flags
+        for (final entry in preset.entries) {
+          await _dbRef.child(entry.key).set(entry.value);
+        }
+        print('[DEBUG] Profile preset written to Firebase for $userName');
+      } else {
+        _activeUserPreset = null;
+        print('[WARN] No preset found for $userName — nothing written');
+      }
 
       // Update active user
       setState(() {
         _activeUserName = userName;
+        _selectedHomeScene = -1; // Clear scene selection
       });
 
       // Write user profile name to Firebase /automation-flags/profile
@@ -825,85 +873,11 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
     ).push(CupertinoPageRoute(builder: (context) => targetScreen));
   }
 
-  /// Handle home scene selection with loading and success alert
+  /// Handle home scene selection with loading and success alert.
+  /// Loads preset values from SharedPreferences (via PresetManager) instead
+  /// of hardcoded maps, so user customisations are preserved across sessions.
   void _handleSceneSelected(int index) async {
     print('[DEBUG] Scene $index selected');
-
-    // Scene names for the alert
-    const sceneNames = [
-      'Good Morning',
-      'Good Night',
-      'House Party',
-      'Vaccation',
-    ];
-
-    // Preset values for each scene
-    final List<Map<String, dynamic>> scenePresets = [
-      // Good Morning
-      {
-        'light intensity': 50,
-        'light-hex-value': '255,255,255',
-        'camera': true,
-        'door-lock': true,
-        'bed-storage': true,
-        'vdb': true,
-        'light': false,
-        'fan': true,
-        'fan-speed': 3,
-        'isFire': true,
-        'is-window-open': true,
-        'window-sensor': true,
-        'party': false,
-      },
-      // Good Night
-      {
-        'light intensity': 120,
-        'light-hex-value': '255,0,193',
-        'camera': true,
-        'door-lock': true,
-        'bed-storage': false,
-        'vdb': true,
-        'light': true,
-        'fan': true,
-        'fan-speed': 4,
-        'isFire': true,
-        'is-window-open': true,
-        'window-sensor': true,
-        'party': false,
-      },
-      // House Party
-      {
-        'light intensity': 220,
-        'light-hex-value': '255,0,193',
-        'camera': true,
-        'door-lock': false,
-        'bed-storage': false,
-        'vdb': false,
-        'light': true,
-        'fan': true,
-        'fan-speed': 4,
-        'isFire': true,
-        'is-window-open': true,
-        'window-sensor': true,
-        'party': true,
-      },
-      // Vaccation
-      {
-        'light intensity': 0,
-        'light-hex-value': '255,0,193',
-        'camera': true,
-        'door-lock': true,
-        'bed-storage': false,
-        'vdb': true,
-        'light': false,
-        'fan': false,
-        'fan-speed': 1,
-        'isFire': true,
-        'is-window-open': true,
-        'window-sensor': true,
-        'party': false,
-      },
-    ];
 
     // Set loading state and selected scene
     setState(() {
@@ -911,14 +885,14 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
       _isSceneLoading = true;
     });
 
-    // Write preset values to Firebase
+    // Read preset from SharedPreferences
     try {
-      final preset = scenePresets[index];
+      final preset = await PresetManager.getPreset(index);
       for (final entry in preset.entries) {
         await _dbRef.child(entry.key).set(entry.value);
       }
       // Write scene name to /profile so that welcome screen shows "Mumbai Home"
-      await _dbRef.child('profile').set(sceneNames[index]);
+      await _dbRef.child('profile').set(PresetManager.sceneNames[index]);
 
       // Toggle survailanceModeEnabled in /dev_env/ based on scene
       final devEnvRef = FirebaseDatabase.instance.ref('dev_env');
@@ -956,7 +930,7 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
             content: Padding(
               padding: const EdgeInsets.only(top: 8.0),
               child: Text(
-                '${sceneNames[index]} scene has been set successfully.',
+                '${PresetManager.sceneNames[index]} scene has been set successfully.',
               ),
             ),
             actions: [
@@ -972,6 +946,171 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
         },
       );
     }
+  }
+
+  /// Handle a device toggle from a room control grid.
+  /// Checks both scene presets (SharedPreferences) and user profile presets
+  /// (Firebase /presets/{user}). Shows an override dialog when the new value
+  /// differs from whichever preset is currently active.
+  Future<void> _handleToggleWithSceneCheck(
+    String dbKey,
+    bool newValue,
+    String deviceName,
+  ) async {
+    // ── Case 1: A scene preset is active ──
+    if (_selectedHomeScene >= 0) {
+      try {
+        final preset = await PresetManager.getPreset(_selectedHomeScene);
+        final presetValue = preset[dbKey];
+
+        if (presetValue != null && presetValue != newValue) {
+          // Value differs from scene preset — show dialog
+          if (mounted) {
+            _showPresetOverrideDialog(
+              dbKey, newValue, deviceName,
+              isUserProfile: false,
+            );
+          }
+          return;
+        }
+      } catch (e) {
+        print('[ERROR] Scene check failed: $e');
+      }
+      // Key not in preset or values match — toggle directly
+      _updateFirebaseAndSync(dbKey, newValue);
+      return;
+    }
+
+    // ── Case 2: A user profile preset is active ──
+    if (_activeUserName != null && _activeUserPreset != null) {
+      final presetValue = _activeUserPreset![dbKey];
+      if (presetValue != null && presetValue != newValue) {
+        if (mounted) {
+          _showPresetOverrideDialog(
+            dbKey, newValue, deviceName,
+            isUserProfile: true,
+          );
+        }
+        return;
+      }
+      // Key not in preset or values match — toggle directly
+      _updateFirebaseAndSync(dbKey, newValue);
+      return;
+    }
+
+    // ── No preset active — just toggle ──
+    _updateFirebaseAndSync(dbKey, newValue);
+  }
+
+  /// Show dialog asking user whether to apply the toggle once or update
+  /// the active preset permanently.
+  ///
+  /// [isUserProfile] — when true, "Update My Preset" writes to Firebase
+  /// `/presets/{user}`. When false, it writes to SharedPreferences (scene).
+  void _showPresetOverrideDialog(
+    String dbKey,
+    bool newValue,
+    String deviceName, {
+    required bool isUserProfile,
+  }) {
+    final presetLabel = isUserProfile
+        ? (_activeUserName != null
+            ? _activeUserName![0].toUpperCase() +
+                _activeUserName!.substring(1).toLowerCase()
+            : 'User')
+        : PresetManager.sceneNames[_selectedHomeScene];
+
+    showCupertinoDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return CupertinoAlertDialog(
+          title: const Text('Override Preset?'),
+          content: Padding(
+            padding: const EdgeInsets.only(top: 10.0),
+            child: Text(
+              'You are changing "$deviceName" which differs from your '
+              '"$presetLabel" preset.\n\n'
+              'Would you like to apply this change once, or update your '
+              '"$presetLabel" preset so it remembers this setting?',
+            ),
+          ),
+          actions: [
+            CupertinoDialogAction(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                // Only update Firebase — preset stays unchanged
+                _updateFirebaseAndSync(dbKey, newValue);
+                print(
+                  '[DEBUG] Override: once-only for $dbKey = $newValue',
+                );
+              },
+              child: const Text('Set for Once'),
+            ),
+            CupertinoDialogAction(
+              isDefaultAction: true,
+              onPressed: () async {
+                Navigator.of(dialogContext).pop();
+                // Update Firebase /automation-flags
+                _updateFirebaseAndSync(dbKey, newValue);
+
+                if (isUserProfile && _activeUserName != null) {
+                  // Update Firebase /presets/{user}
+                  try {
+                    await _presetsRef
+                        .child(_activeUserName!)
+                        .child(dbKey)
+                        .set(newValue);
+                    // Also update local cache
+                    _activeUserPreset?[dbKey] = newValue;
+                    print(
+                      '[DEBUG] Override: user preset updated '
+                      '/presets/$_activeUserName/$dbKey = $newValue',
+                    );
+                  } catch (e) {
+                    print('[ERROR] Failed to update user preset: $e');
+                  }
+                } else {
+                  // Update SharedPreferences (scene preset)
+                  await PresetManager.updatePresetValue(
+                    _selectedHomeScene,
+                    dbKey,
+                    newValue,
+                  );
+                  print(
+                    '[DEBUG] Override: scene preset updated for $dbKey = $newValue',
+                  );
+                }
+
+                if (mounted) {
+                  showCupertinoDialog(
+                    context: context,
+                    builder: (ctx) => CupertinoAlertDialog(
+                      title: const Text('Preset Updated'),
+                      content: Padding(
+                        padding: const EdgeInsets.only(top: 8.0),
+                        child: Text(
+                          '"$presetLabel" preset has been updated with the '
+                          'new $deviceName setting.',
+                        ),
+                      ),
+                      actions: [
+                        CupertinoDialogAction(
+                          isDefaultAction: true,
+                          onPressed: () => Navigator.of(ctx).pop(),
+                          child: const Text('OK'),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+              },
+              child: const Text('Update My Preset'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   /// Handle home space navigation
@@ -1052,7 +1191,8 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
     if (dbKey != null) {
       // Current status: red(1) -> set to true, green(2) -> set to false
       final newValue = _livingRoomStatus[index] == 1;
-      _updateFirebaseAndSync(dbKey, newValue);
+      final deviceName = livingRoomControls[index]['label'] as String;
+      _handleToggleWithSceneCheck(dbKey, newValue, deviceName);
     } else {
       // No dbKey - just toggle locally
       setState(() {
@@ -1077,7 +1217,8 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
 
     if (dbKey != null) {
       final newValue = _kitchenStatus[index] == 1;
-      _updateFirebaseAndSync(dbKey, newValue);
+      final deviceName = kitchenControls[index]['label'] as String;
+      _handleToggleWithSceneCheck(dbKey, newValue, deviceName);
     } else {
       setState(() {
         _kitchenToggles[index] = !_kitchenToggles[index];
@@ -1101,7 +1242,8 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
 
     if (dbKey != null) {
       final newValue = _bedroomStatus[index] == 1;
-      _updateFirebaseAndSync(dbKey, newValue);
+      final deviceName = bedroomControls[index]['label'] as String;
+      _handleToggleWithSceneCheck(dbKey, newValue, deviceName);
     } else {
       setState(() {
         _bedroomToggles[index] = !_bedroomToggles[index];

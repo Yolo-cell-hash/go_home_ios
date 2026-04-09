@@ -17,13 +17,19 @@ class WelcomeScreenWidget extends StatelessWidget {
   final String? activeUserName; // Active user from Firebase ACK
   final Function(String userName)?
   onProfileSelected; // Profile dropdown callback
+  final Set<String> knownUsers; // Dynamically fetched known users from /presets
+  // Callback that fetches the latest user list from Firebase on demand
+  final Future<Set<String>> Function()? onRefreshUsers;
 
-  // Map of known usernames to their avatar image paths
+  // Avatar image mapping — extended with all known users
   static const Map<String, String> userAvatars = {
     'deodatta': 'images/deodatta.jpeg',
     'parag': 'images/parag.jpeg',
     'sd': 'images/sd.jpeg',
     'jinay': 'images/jinay.jpeg',
+    'jay': 'images/jay.jpeg',
+    'saili': 'images/sd.jpeg',  // Saili shares sd avatar
+    'kd': 'images/parag.jpeg', // KD/Keyoor shares parag avatar
   };
 
   const WelcomeScreenWidget({
@@ -33,6 +39,8 @@ class WelcomeScreenWidget extends StatelessWidget {
     this.onIconLongPress,
     this.activeUserName,
     this.onProfileSelected,
+    this.knownUsers = const {},
+    this.onRefreshUsers,
   });
 
   // Check if this is a small screen (iPhone in portrait)
@@ -102,7 +110,7 @@ class WelcomeScreenWidget extends StatelessWidget {
 
     final hasActiveUser =
         activeUserName != null &&
-        userAvatars.containsKey(activeUserName!.toLowerCase());
+        knownUsers.contains(activeUserName!.toLowerCase());
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: hPadding, vertical: vPadding),
@@ -126,12 +134,25 @@ class WelcomeScreenWidget extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 10),
-                      CircleAvatar(
-                        radius: avatarRadius,
-                        backgroundImage: AssetImage(
-                          userAvatars[activeUserName!.toLowerCase()]!,
-                        ),
-                      ),
+                      userAvatars.containsKey(activeUserName!.toLowerCase())
+                          ? CircleAvatar(
+                              radius: avatarRadius,
+                              backgroundImage: AssetImage(
+                                userAvatars[activeUserName!.toLowerCase()]!,
+                              ),
+                            )
+                          : CircleAvatar(
+                              radius: avatarRadius,
+                              backgroundColor: primaryColor.withOpacity(0.15),
+                              child: Text(
+                                activeUserName![0].toUpperCase(),
+                                style: TextStyle(
+                                  color: primaryColor,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: avatarRadius * 0.9,
+                                ),
+                              ),
+                            ),
                     ],
                   ),
                 )
@@ -408,92 +429,243 @@ class WelcomeScreenWidget extends StatelessWidget {
     );
   }
 
-  /// Shows a dropdown popup to select a user profile
+  /// Shows a dropdown popup to select a user profile.
+  /// Fetches the latest user list from Firebase on every open for real-time accuracy.
   void _showProfileDropdown(
     BuildContext context,
     Color primaryColor,
     double avatarRadius,
   ) {
-    // Filter out the currently active user
     final currentKey = activeUserName?.toLowerCase();
-    final availableUsers = userAvatars.keys
-        .where((key) => key != currentKey)
-        .toList();
 
     showCupertinoModalPopup(
       context: context,
       builder: (popupContext) {
-        return Container(
-          padding: const EdgeInsets.only(top: 12, bottom: 24),
-          decoration: BoxDecoration(
-            color: CupertinoColors.systemBackground.resolveFrom(popupContext),
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(20),
-              topRight: Radius.circular(20),
+        return StatefulBuilder(
+          builder: (sbContext, setState) {
+            // State inside the popup
+            bool isLoading = false;
+            Set<String> liveUsers = Set.from(knownUsers);
+
+            // Trigger fetch immediately when popup opens
+            Future<void> fetchUsers() async {
+              if (onRefreshUsers == null) return;
+              setState(() => isLoading = true);
+              try {
+                final fresh = await onRefreshUsers!();
+                setState(() {
+                  liveUsers = fresh;
+                  isLoading = false;
+                });
+              } catch (_) {
+                setState(() => isLoading = false);
+              }
+            }
+
+            return _ProfileDropdownSheet(
+              primaryColor: primaryColor,
+              avatarRadius: avatarRadius,
+              currentKey: currentKey,
+              initialUsers: liveUsers,
+              onRefreshUsers: onRefreshUsers,
+              onUserSelected: (userKey) {
+                Navigator.of(popupContext).pop();
+                onProfileSelected?.call(userKey);
+              },
+              displayName: _displayName,
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+/// Stateful bottom sheet that fetches fresh users from Firebase on open
+class _ProfileDropdownSheet extends StatefulWidget {
+  final Color primaryColor;
+  final double avatarRadius;
+  final String? currentKey;
+  final Set<String> initialUsers;
+  final Future<Set<String>> Function()? onRefreshUsers;
+  final void Function(String) onUserSelected;
+  final String Function(String) displayName;
+
+  const _ProfileDropdownSheet({
+    required this.primaryColor,
+    required this.avatarRadius,
+    required this.currentKey,
+    required this.initialUsers,
+    required this.onRefreshUsers,
+    required this.onUserSelected,
+    required this.displayName,
+  });
+
+  @override
+  State<_ProfileDropdownSheet> createState() => _ProfileDropdownSheetState();
+}
+
+class _ProfileDropdownSheetState extends State<_ProfileDropdownSheet> {
+  bool _isLoading = true;
+  Set<String> _users = {};
+
+  // Avatar image mapping — extended with all known users
+  static const Map<String, String> _userAvatars =
+      WelcomeScreenWidget.userAvatars;
+
+  @override
+  void initState() {
+    super.initState();
+    _users = Set.from(widget.initialUsers);
+    _fetchFreshUsers();
+  }
+
+  Future<void> _fetchFreshUsers() async {
+    if (widget.onRefreshUsers == null) {
+      setState(() => _isLoading = false);
+      return;
+    }
+    try {
+      final fresh = await widget.onRefreshUsers!();
+      if (mounted) {
+        setState(() {
+          _users = fresh;
+          _isLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Widget _buildAvatar(String userKey) {
+    final color = widget.primaryColor;
+    final radius = widget.avatarRadius;
+    if (_userAvatars.containsKey(userKey)) {
+      return CircleAvatar(
+        radius: radius,
+        backgroundImage: AssetImage(_userAvatars[userKey]!),
+      );
+    }
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: color.withValues(alpha: 0.15),
+      child: Text(
+        userKey[0].toUpperCase(),
+        style: TextStyle(
+          color: color,
+          fontWeight: FontWeight.w600,
+          fontSize: radius * 0.9,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = widget.primaryColor;
+    // Show all users; active user gets a checkmark
+    final allUsers = _users.toList()..sort();
+
+    return Container(
+      padding: const EdgeInsets.only(top: 12, bottom: 24),
+      decoration: BoxDecoration(
+        color: CupertinoColors.systemBackground.resolveFrom(context),
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
+        ),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle bar
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: CupertinoColors.systemGrey3,
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
-          ),
-          child: SafeArea(
-            top: false,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Handle bar
-                Container(
-                  width: 40,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    color: CupertinoColors.systemGrey3,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                // Title
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Text(
+            // Title row with refresh indicator
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
                     'Switch Profile',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
-                      color: CupertinoColors.label.resolveFrom(popupContext),
+                      color: CupertinoColors.label.resolveFrom(context),
                     ),
                   ),
+                  if (_isLoading) ...
+                    [
+                      const SizedBox(width: 10),
+                      const CupertinoActivityIndicator(radius: 10),
+                    ],
+                ],
+              ),
+            ),
+            // User list — all users, active gets checkmark
+            if (!_isLoading && allUsers.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                child: Text(
+                  'No profiles found',
+                  style: TextStyle(
+                    color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                  ),
                 ),
-                // User list
-                ...availableUsers.map((userKey) {
-                  return CupertinoButton(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 10,
-                    ),
-                    onPressed: () {
-                      Navigator.of(popupContext).pop();
-                      onProfileSelected?.call(userKey);
-                    },
-                    child: Row(
-                      children: [
-                        CircleAvatar(
-                          radius: avatarRadius,
-                          backgroundImage: AssetImage(userAvatars[userKey]!),
-                        ),
-                        const SizedBox(width: 14),
-                        Text(
-                          _displayName(userKey),
+              )
+            else
+              ...allUsers.map((userKey) {
+                final isActive = userKey == widget.currentKey;
+                return CupertinoButton(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 10,
+                  ),
+                  onPressed: isActive
+                      ? null // tapping active user does nothing
+                      : () => widget.onUserSelected(userKey),
+                  child: Row(
+                    children: [
+                      _buildAvatar(userKey),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Text(
+                          widget.displayName(userKey),
                           style: TextStyle(
                             fontSize: 17,
-                            fontWeight: FontWeight.w500,
-                            color: primaryColor,
+                            fontWeight: isActive
+                                ? FontWeight.w700
+                                : FontWeight.w500,
+                            color: isActive
+                                ? color
+                                : CupertinoColors.label.resolveFrom(context),
                           ),
                         ),
-                      ],
-                    ),
-                  );
-                }),
-              ],
-            ),
-          ),
-        );
-      },
+                      ),
+                      if (isActive)
+                        Icon(
+                          CupertinoIcons.checkmark_alt,
+                          color: color,
+                          size: 20,
+                        ),
+                    ],
+                  ),
+                );
+              }),
+          ],
+        ),
+      ),
     );
   }
 }

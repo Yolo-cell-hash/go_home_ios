@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:godrej_home/widgets/navbar_setup.dart';
+import 'package:godrej_home/services/preset_override_helper.dart';
 
 /// Fan control screen with speed adjustment
 class FanControlScreen extends StatefulWidget {
@@ -110,27 +111,25 @@ class _FanControlScreenState extends State<FanControlScreen> {
     });
   }
 
-  /// Update fan toggle state in Firebase
+  /// Update fan toggle state — with preset override check
   Future<void> _updateFanState(bool value) async {
-    try {
-      await _dbRef.child('fan').set(value);
-      print('[DEBUG] FanControlScreen: Updated Firebase fan = $value');
-    } catch (e) {
-      print('[ERROR] FanControlScreen: Failed to update fan state: $e');
-    }
+    await PresetOverrideHelper.updateWithCheck(
+      context: context,
+      dbKey: 'fan',
+      newValue: value,
+      deviceName: 'Fan',
+    );
   }
 
-  /// Update fan speed value in Firebase (1-5)
+  /// Update fan speed value — with preset override check
   Future<void> _updateFanSpeed(int speed) async {
     final clampedSpeed = speed.clamp(1, 5);
-    try {
-      await _dbRef.child('fan-speed').set(clampedSpeed);
-      print(
-        '[DEBUG] FanControlScreen: Updated Firebase fan-speed = $clampedSpeed',
-      );
-    } catch (e) {
-      print('[ERROR] FanControlScreen: Failed to update fan speed: $e');
-    }
+    await PresetOverrideHelper.updateWithCheck(
+      context: context,
+      dbKey: 'fan-speed',
+      newValue: clampedSpeed,
+      deviceName: 'Fan Speed',
+    );
   }
 
   /// Decrease fan speed

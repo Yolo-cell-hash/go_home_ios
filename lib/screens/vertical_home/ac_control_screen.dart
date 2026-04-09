@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:godrej_home/widgets/navbar_setup.dart';
+import 'package:godrej_home/services/preset_override_helper.dart';
 
 /// AC control screen with temperature adjustment
 class AcControlScreen extends StatefulWidget {
@@ -110,25 +111,25 @@ class _AcControlScreenState extends State<AcControlScreen> {
     });
   }
 
-  /// Update AC toggle state in Firebase
+  /// Update AC toggle state — with preset override check
   Future<void> _updateAcState(bool value) async {
-    try {
-      await _dbRef.child('ac').set(value);
-      print('[DEBUG] AcControlScreen: Updated Firebase ac = $value');
-    } catch (e) {
-      print('[ERROR] AcControlScreen: Failed to update AC state: $e');
-    }
+    await PresetOverrideHelper.updateWithCheck(
+      context: context,
+      dbKey: 'ac',
+      newValue: value,
+      deviceName: 'Air Conditioner',
+    );
   }
 
-  /// Update AC temperature value in Firebase (16-26)
+  /// Update AC temperature — with preset override check
   Future<void> _updateAcTemp(int temp) async {
     final clampedTemp = temp.clamp(16, 26);
-    try {
-      await _dbRef.child('ac-temp').set(clampedTemp);
-      print('[DEBUG] AcControlScreen: Updated Firebase ac-temp = $clampedTemp');
-    } catch (e) {
-      print('[ERROR] AcControlScreen: Failed to update AC temp: $e');
-    }
+    await PresetOverrideHelper.updateWithCheck(
+      context: context,
+      dbKey: 'ac-temp',
+      newValue: clampedTemp,
+      deviceName: 'AC Temperature',
+    );
   }
 
   /// Decrease AC temperature

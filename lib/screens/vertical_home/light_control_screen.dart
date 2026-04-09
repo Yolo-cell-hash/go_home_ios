@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:godrej_home/widgets/navbar_setup.dart';
+import 'package:godrej_home/services/preset_override_helper.dart';
 
 /// Smart Light control screen
 class LightControlScreen extends StatefulWidget {
@@ -189,24 +190,24 @@ class _LightControlScreenState extends State<LightControlScreen> {
     });
   }
 
-  /// Update light toggle state in Firebase
+  /// Update light toggle state — with preset override check
   Future<void> _updateLightState(bool value) async {
-    try {
-      await _dbRef.child('light').set(value);
-      print('[DEBUG] LightControlScreen: Updated Firebase light = $value');
-    } catch (e) {
-      print('[ERROR] LightControlScreen: Failed to update light state: $e');
-    }
+    await PresetOverrideHelper.updateWithCheck(
+      context: context,
+      dbKey: 'light',
+      newValue: value,
+      deviceName: 'Light',
+    );
   }
 
-  /// Update party state in Firebase
+  /// Update party state — with preset override check
   Future<void> _updatePartyState(bool value) async {
-    try {
-      await _dbRef.child('party').set(value);
-      print('[DEBUG] LightControlScreen: Updated Firebase party = $value');
-    } catch (e) {
-      print('[ERROR] LightControlScreen: Failed to update party state: $e');
-    }
+    await PresetOverrideHelper.updateWithCheck(
+      context: context,
+      dbKey: 'party',
+      newValue: value,
+      deviceName: 'Party Mode',
+    );
   }
 
   /// Toggle party mode
@@ -219,28 +220,26 @@ class _LightControlScreenState extends State<LightControlScreen> {
     _updatePartyState(newState);
   }
 
-  /// Update RGB color value in Firebase (format: "r,g,b")
+  /// Update RGB color value — with preset override check
   Future<void> _updateRgbColor(Color color) async {
     final rgbValue = _colorToRgb(color);
-    try {
-      await _dbRef.child('light-hex-value').set(rgbValue);
-      print('[DEBUG] LightControlScreen: Updated Firebase RGB = $rgbValue');
-    } catch (e) {
-      print('[ERROR] LightControlScreen: Failed to update RGB color: $e');
-    }
+    await PresetOverrideHelper.updateWithCheck(
+      context: context,
+      dbKey: 'light-hex-value',
+      newValue: rgbValue,
+      deviceName: 'Light Color',
+    );
   }
 
-  /// Update light intensity value in Firebase (0-255)
+  /// Update light intensity value — with preset override check
   Future<void> _updateIntensity(double brightnessValue) async {
     final intensity = (brightnessValue * 255).round().clamp(0, 255);
-    try {
-      await _dbRef.child('light intensity').set(intensity);
-      print(
-        '[DEBUG] LightControlScreen: Updated Firebase intensity = $intensity',
-      );
-    } catch (e) {
-      print('[ERROR] LightControlScreen: Failed to update intensity: $e');
-    }
+    await PresetOverrideHelper.updateWithCheck(
+      context: context,
+      dbKey: 'light intensity',
+      newValue: intensity,
+      deviceName: 'Light Intensity',
+    );
   }
 
   /// Convert Color to RGB string (e.g., "255,235,59")
