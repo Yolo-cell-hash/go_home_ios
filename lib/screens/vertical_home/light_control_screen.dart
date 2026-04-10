@@ -21,6 +21,9 @@ class _LightControlScreenState extends State<LightControlScreen> {
   Color selectedColor = const Color(0xFFFFEB3B); // Default yellow
   bool _isLoading = true;
 
+  // Cached active preset — fetched once on screen open
+  ActivePresetInfo? _activePreset;
+
   // Firebase database reference
   final DatabaseReference _dbRef = FirebaseDatabase.instance.ref(
     'automation-flags',
@@ -50,6 +53,7 @@ class _LightControlScreenState extends State<LightControlScreen> {
     super.initState();
     _fetchFirebaseState();
     _setupFirebaseListeners();
+    _loadActivePreset();
   }
 
   @override
@@ -190,10 +194,51 @@ class _LightControlScreenState extends State<LightControlScreen> {
     });
   }
 
+  /// Load the active preset on screen open for override detection
+  Future<void> _loadActivePreset() async {
+    final preset = await PresetOverrideHelper.fetchActivePreset();
+    if (mounted) {
+      setState(() {
+        _activePreset = preset;
+      });
+      print('[DEBUG] LightControlScreen: Active preset loaded: '
+          '${preset?.presetLabel ?? "none"}');
+    }
+  }
+
+  /// Check cached preset and either show dialog or write directly.
+  /// This is SYNCHRONOUS for the comparison — no async gap before dialog.
+  void _handleToggleWithPresetCheck({
+    required String dbKey,
+    required dynamic newValue,
+    required String deviceName,
+  }) {
+    if (PresetOverrideHelper.shouldShowDialog(
+      activePreset: _activePreset,
+      dbKey: dbKey,
+      newValue: newValue,
+    )) {
+      // Values differ from preset — show dialog
+      PresetOverrideHelper.showOverrideDialog(
+        context: context,
+        activePreset: _activePreset!,
+        dbKey: dbKey,
+        newValue: newValue,
+        deviceName: deviceName,
+        onPresetUpdated: (key, val) {
+          // Update local cache so subsequent toggles use the new value
+          _activePreset?.presetData[key] = val;
+        },
+      );
+    } else {
+      // No preset active or values match — write directly
+      PresetOverrideHelper.writeToAutomationFlags(dbKey, newValue);
+    }
+  }
+
   /// Update light toggle state — with preset override check
-  Future<void> _updateLightState(bool value) async {
-    await PresetOverrideHelper.updateWithCheck(
-      context: context,
+  void _updateLightState(bool value) {
+    _handleToggleWithPresetCheck(
       dbKey: 'light',
       newValue: value,
       deviceName: 'Light',
@@ -201,9 +246,8 @@ class _LightControlScreenState extends State<LightControlScreen> {
   }
 
   /// Update party state — with preset override check
-  Future<void> _updatePartyState(bool value) async {
-    await PresetOverrideHelper.updateWithCheck(
-      context: context,
+  void _updatePartyState(bool value) {
+    _handleToggleWithPresetCheck(
       dbKey: 'party',
       newValue: value,
       deviceName: 'Party Mode',
@@ -221,10 +265,9 @@ class _LightControlScreenState extends State<LightControlScreen> {
   }
 
   /// Update RGB color value — with preset override check
-  Future<void> _updateRgbColor(Color color) async {
+  void _updateRgbColor(Color color) {
     final rgbValue = _colorToRgb(color);
-    await PresetOverrideHelper.updateWithCheck(
-      context: context,
+    _handleToggleWithPresetCheck(
       dbKey: 'light-hex-value',
       newValue: rgbValue,
       deviceName: 'Light Color',
@@ -232,10 +275,9 @@ class _LightControlScreenState extends State<LightControlScreen> {
   }
 
   /// Update light intensity value — with preset override check
-  Future<void> _updateIntensity(double brightnessValue) async {
+  void _updateIntensity(double brightnessValue) {
     final intensity = (brightnessValue * 255).round().clamp(0, 255);
-    await PresetOverrideHelper.updateWithCheck(
-      context: context,
+    _handleToggleWithPresetCheck(
       dbKey: 'light intensity',
       newValue: intensity,
       deviceName: 'Light Intensity',
@@ -484,6 +526,7 @@ class _LightControlScreenState extends State<LightControlScreen> {
                                                   _updateRgbColor(
                                                     Color(0xFFFFE0B2),
                                                   );
+                                                  _updateIntensity(0.2);
                                                 },
                                               ),
                                               _buildElegantButton(
@@ -501,6 +544,7 @@ class _LightControlScreenState extends State<LightControlScreen> {
                                                   _updateRgbColor(
                                                     Color(0xFFFFF9C4),
                                                   );
+                                                  _updateIntensity(0.5);
                                                 },
                                               ),
                                             ],

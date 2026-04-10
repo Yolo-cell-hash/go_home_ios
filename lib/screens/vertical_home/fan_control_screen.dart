@@ -27,11 +27,15 @@ class _FanControlScreenState extends State<FanControlScreen> {
   StreamSubscription<DatabaseEvent>? _fanSubscription;
   StreamSubscription<DatabaseEvent>? _speedSubscription;
 
+  // Cached active preset — fetched once on screen open
+  ActivePresetInfo? _activePreset;
+
   @override
   void initState() {
     super.initState();
     _fetchFirebaseState();
     _setupFirebaseListeners();
+    _loadActivePreset();
   }
 
   @override
@@ -39,6 +43,18 @@ class _FanControlScreenState extends State<FanControlScreen> {
     _fanSubscription?.cancel();
     _speedSubscription?.cancel();
     super.dispose();
+  }
+
+  /// Load the active preset on screen open for override detection
+  Future<void> _loadActivePreset() async {
+    final preset = await PresetOverrideHelper.fetchActivePreset();
+    if (mounted) {
+      setState(() {
+        _activePreset = preset;
+      });
+      print('[DEBUG] FanControlScreen: Active preset loaded: '
+          '${preset?.presetLabel ?? "none"}');
+    }
   }
 
   /// Fetch initial state from Firebase
@@ -111,10 +127,39 @@ class _FanControlScreenState extends State<FanControlScreen> {
     });
   }
 
+  /// Check cached preset and either show dialog or write directly.
+  /// This is SYNCHRONOUS for the comparison — no async gap before dialog.
+  void _handleToggleWithPresetCheck({
+    required String dbKey,
+    required dynamic newValue,
+    required String deviceName,
+  }) {
+    if (PresetOverrideHelper.shouldShowDialog(
+      activePreset: _activePreset,
+      dbKey: dbKey,
+      newValue: newValue,
+    )) {
+      // Values differ from preset — show dialog
+      PresetOverrideHelper.showOverrideDialog(
+        context: context,
+        activePreset: _activePreset!,
+        dbKey: dbKey,
+        newValue: newValue,
+        deviceName: deviceName,
+        onPresetUpdated: (key, val) {
+          // Update local cache so subsequent toggles use the new value
+          _activePreset?.presetData[key] = val;
+        },
+      );
+    } else {
+      // No preset active or values match — write directly
+      PresetOverrideHelper.writeToAutomationFlags(dbKey, newValue);
+    }
+  }
+
   /// Update fan toggle state — with preset override check
-  Future<void> _updateFanState(bool value) async {
-    await PresetOverrideHelper.updateWithCheck(
-      context: context,
+  void _updateFanState(bool value) {
+    _handleToggleWithPresetCheck(
       dbKey: 'fan',
       newValue: value,
       deviceName: 'Fan',
@@ -122,10 +167,9 @@ class _FanControlScreenState extends State<FanControlScreen> {
   }
 
   /// Update fan speed value — with preset override check
-  Future<void> _updateFanSpeed(int speed) async {
+  void _updateFanSpeed(int speed) {
     final clampedSpeed = speed.clamp(1, 5);
-    await PresetOverrideHelper.updateWithCheck(
-      context: context,
+    _handleToggleWithPresetCheck(
       dbKey: 'fan-speed',
       newValue: clampedSpeed,
       deviceName: 'Fan Speed',

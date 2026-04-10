@@ -28,7 +28,7 @@ class WelcomeScreenWidget extends StatelessWidget {
     'sd': 'images/sd.jpeg',
     'jinay': 'images/jinay.jpeg',
     'jay': 'images/jay.jpeg',
-    'saili': 'images/sd.jpeg',  // Saili shares sd avatar
+    'saili': 'images/sd.jpeg', // Saili shares sd avatar
     'kd': 'images/parag.jpeg', // KD/Keyoor shares parag avatar
   };
 
@@ -605,11 +605,10 @@ class _ProfileDropdownSheetState extends State<_ProfileDropdownSheet> {
                       color: CupertinoColors.label.resolveFrom(context),
                     ),
                   ),
-                  if (_isLoading) ...
-                    [
-                      const SizedBox(width: 10),
-                      const CupertinoActivityIndicator(radius: 10),
-                    ],
+                  if (_isLoading) ...[
+                    const SizedBox(width: 10),
+                    const CupertinoActivityIndicator(radius: 10),
+                  ],
                 ],
               ),
             ),
