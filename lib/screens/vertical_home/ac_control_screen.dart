@@ -5,6 +5,7 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:godrej_home/widgets/navbar_setup.dart';
 import 'package:godrej_home/services/preset_override_helper.dart';
 import 'package:godrej_home/services/godrej_ac_api_service.dart';
+import 'package:godrej_home/screens/home_screen.dart';
 
 /// AC control screen with temperature adjustment — powered by Godrej AC cloud API.
 /// Preset override logic is preserved: presets still live in Firebase/SharedPreferences.
@@ -79,8 +80,12 @@ class _AcControlScreenState extends State<AcControlScreen> {
   }
 
   // ---------------------------------------------------------------------------
-  // Preset override logic (preserved from original)
+  // Deferred preset override: write immediately, accumulate for exit prompt
   // ---------------------------------------------------------------------------
+
+  // Accumulated changes made during this session (dbKey → latest value).
+  // Compared against _activePreset on exit to decide whether to prompt.
+  final Map<String, dynamic> _pendingChanges = {};
 
   /// Load the active preset on screen open for override detection
   Future<void> _loadActivePreset() async {
@@ -96,33 +101,13 @@ class _AcControlScreenState extends State<AcControlScreen> {
     }
   }
 
-  /// Check cached preset and either show dialog or write directly.
-  void _handleToggleWithPresetCheck({
-    required String dbKey,
-    required dynamic newValue,
-    required String deviceName,
-  }) {
-    if (PresetOverrideHelper.shouldShowDialog(
-      activePreset: _activePreset,
-      dbKey: dbKey,
-      newValue: newValue,
-    )) {
-      // Values differ from preset — show dialog
-      PresetOverrideHelper.showOverrideDialog(
-        context: context,
-        activePreset: _activePreset!,
-        dbKey: dbKey,
-        newValue: newValue,
-        deviceName: deviceName,
-        onPresetUpdated: (key, val) {
-          // Update local cache so subsequent toggles use the new value
-          _activePreset?.presetData[key] = val;
-        },
-      );
-    } else {
-      // No preset active or values match — write directly to Firebase
-      PresetOverrideHelper.writeToAutomationFlags(dbKey, newValue);
-    }
+  /// Apply a change immediately (automation-flags) and record it for the exit
+  /// dialog. No per-change dialog is shown.
+  void _applyChange(String dbKey, dynamic newValue) {
+    PresetOverrideHelper.writeToAutomationFlags(dbKey, newValue);
+    _pendingChanges[dbKey] = newValue;
+    print('[DEBUG] AcControlScreen: Applied $dbKey = $newValue '
+        '(pending: $_pendingChanges)');
   }
 
   // ---------------------------------------------------------------------------
@@ -288,10 +273,10 @@ class _AcControlScreenState extends State<AcControlScreen> {
   }
 
   // ---------------------------------------------------------------------------
-  // AC control actions
+  // AC control actions — deferred preset override
   // ---------------------------------------------------------------------------
 
-  /// Update AC power state — API + Firebase + preset check
+  /// Update AC power state — API + Firebase (deferred preset check)
   void _updateAcState(bool value) {
     // Optimistic UI update
     setState(() => isAcOn = value);
@@ -299,15 +284,11 @@ class _AcControlScreenState extends State<AcControlScreen> {
     // Call API to update device
     _api.setAcParam('Power', value);
 
-    // Preset check + Firebase sync
-    _handleToggleWithPresetCheck(
-      dbKey: 'ac',
-      newValue: value,
-      deviceName: 'Air Conditioner',
-    );
+    // Write to automation-flags + accumulate for exit dialog
+    _applyChange('ac', value);
   }
 
-  /// Update AC temperature — API + Firebase + preset check
+  /// Update AC temperature — API + Firebase (deferred preset check)
   void _updateAcTemp(int temp) {
     final clampedTemp = temp.clamp(16, 30);
 
@@ -317,15 +298,11 @@ class _AcControlScreenState extends State<AcControlScreen> {
     // Call API to update device
     _api.setAcParam('Temperature', clampedTemp);
 
-    // Preset check + Firebase sync
-    _handleToggleWithPresetCheck(
-      dbKey: 'ac-temp',
-      newValue: clampedTemp,
-      deviceName: 'AC Temperature',
-    );
+    // Write to automation-flags + accumulate for exit dialog
+    _applyChange('ac-temp', clampedTemp);
   }
 
-  /// Update AC mode — API + Firebase + preset check
+  /// Update AC mode — API + Firebase (deferred preset check)
   void _updateAcMode(String mode) {
     final modeLower = mode.toLowerCase();
     setState(() {
@@ -334,16 +311,12 @@ class _AcControlScreenState extends State<AcControlScreen> {
     });
     _api.setAcParam('Mode', modeLower);
 
-    // Preset check + Firebase sync
-    _handleToggleWithPresetCheck(
-      dbKey: 'ac-mode',
-      newValue: modeLower,
-      deviceName: 'AC Mode',
-    );
+    // Write to automation-flags + accumulate for exit dialog
+    _applyChange('ac-mode', modeLower);
     print('[DEBUG] AcControlScreen: Mode set to $mode');
   }
 
-  /// Update fan speed — API + Firebase + preset check
+  /// Update fan speed — API + Firebase (deferred preset check)
   void _updateFanSpeed(String speed) {
     setState(() {
       fanSpeed = speed;
@@ -351,12 +324,8 @@ class _AcControlScreenState extends State<AcControlScreen> {
     });
     _api.setAcParam('Fan Speed', speed);
 
-    // Preset check + Firebase sync
-    _handleToggleWithPresetCheck(
-      dbKey: 'ac-fan-speed',
-      newValue: speed,
-      deviceName: 'AC Fan Speed',
-    );
+    // Write to automation-flags + accumulate for exit dialog
+    _applyChange('ac-fan-speed', speed);
     print('[DEBUG] AcControlScreen: Fan speed set to $speed');
   }
 
@@ -478,6 +447,55 @@ class _AcControlScreenState extends State<AcControlScreen> {
   }
 
   // ---------------------------------------------------------------------------
+  // Exit handling — show single dialog if changes differ from preset
+  // ---------------------------------------------------------------------------
+
+  /// Called when the user tries to leave the screen (back button or home logo).
+  Future<void> _handleExit({bool isHomeTap = false}) async {
+    if (PresetOverrideHelper.hasPendingPresetChanges(
+      activePreset: _activePreset,
+      pendingChanges: _pendingChanges,
+    )) {
+      final shouldPop = await PresetOverrideHelper.showExitOverrideDialog(
+        context: context,
+        activePreset: _activePreset!,
+        pendingChanges: _pendingChanges,
+      );
+      if (!shouldPop || !mounted) return;
+    }
+
+    if (!mounted) return;
+
+    if (isHomeTap) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        CupertinoPageRoute(
+          builder: (BuildContext context) => HomeScreen(),
+        ),
+        ModalRoute.withName('/home'),
+      );
+    } else {
+      Navigator.pop(context);
+    }
+  }
+
+  /// PopScope callback — intercepts system back gesture / button.
+  Future<bool> _onPopInvoked() async {
+    if (PresetOverrideHelper.hasPendingPresetChanges(
+      activePreset: _activePreset,
+      pendingChanges: _pendingChanges,
+    )) {
+      final shouldPop = await PresetOverrideHelper.showExitOverrideDialog(
+        context: context,
+        activePreset: _activePreset!,
+        pendingChanges: _pendingChanges,
+      );
+      return shouldPop;
+    }
+    return true;
+  }
+
+  // ---------------------------------------------------------------------------
   // Build
   // ---------------------------------------------------------------------------
 
@@ -486,12 +504,27 @@ class _AcControlScreenState extends State<AcControlScreen> {
     final primaryColor = CupertinoTheme.of(context).primaryColor;
     final theme = CupertinoTheme.of(context);
 
-    return CupertinoPageScaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final shouldPop = await _onPopInvoked();
+        if (shouldPop && mounted) {
+          Navigator.pop(context);
+        }
+      },
+      child: CupertinoPageScaffold(
       backgroundColor: CupertinoColors.systemBackground,
       child: Column(
         children: [
           // Use existing NavbarSetup widget
-          NavbarSetup(theme: theme, imgPath: 'ac', label: 'Air-Conditioner'),
+          NavbarSetup(
+            theme: theme,
+            imgPath: 'ac',
+            label: 'Air-Conditioner',
+            onBackPressed: () => _handleExit(),
+            onHomeTap: () => _handleExit(isHomeTap: true),
+          ),
 
           // Main content area
           Expanded(
@@ -635,6 +668,7 @@ class _AcControlScreenState extends State<AcControlScreen> {
                   ),
           ),
         ],
+      ),
       ),
     );
   }

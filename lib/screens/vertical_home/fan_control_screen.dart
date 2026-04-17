@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:godrej_home/widgets/navbar_setup.dart';
 import 'package:godrej_home/services/preset_override_helper.dart';
+import 'package:godrej_home/screens/home_screen.dart';
 
 /// Fan control screen with speed adjustment
 class FanControlScreen extends StatefulWidget {
@@ -29,6 +30,10 @@ class _FanControlScreenState extends State<FanControlScreen> {
 
   // Cached active preset — fetched once on screen open
   ActivePresetInfo? _activePreset;
+
+  // Accumulated changes made during this session (dbKey → latest value).
+  // Compared against _activePreset on exit to decide whether to prompt.
+  final Map<String, dynamic> _pendingChanges = {};
 
   @override
   void initState() {
@@ -127,53 +132,30 @@ class _FanControlScreenState extends State<FanControlScreen> {
     });
   }
 
-  /// Check cached preset and either show dialog or write directly.
-  /// This is SYNCHRONOUS for the comparison — no async gap before dialog.
-  void _handleToggleWithPresetCheck({
-    required String dbKey,
-    required dynamic newValue,
-    required String deviceName,
-  }) {
-    if (PresetOverrideHelper.shouldShowDialog(
-      activePreset: _activePreset,
-      dbKey: dbKey,
-      newValue: newValue,
-    )) {
-      // Values differ from preset — show dialog
-      PresetOverrideHelper.showOverrideDialog(
-        context: context,
-        activePreset: _activePreset!,
-        dbKey: dbKey,
-        newValue: newValue,
-        deviceName: deviceName,
-        onPresetUpdated: (key, val) {
-          // Update local cache so subsequent toggles use the new value
-          _activePreset?.presetData[key] = val;
-        },
-      );
-    } else {
-      // No preset active or values match — write directly
-      PresetOverrideHelper.writeToAutomationFlags(dbKey, newValue);
-    }
+  // ---------------------------------------------------------------------------
+  // Deferred override: write immediately, accumulate for exit prompt
+  // ---------------------------------------------------------------------------
+
+  /// Apply a change immediately (automation-flags) and record it for the exit
+  /// dialog. No per-change dialog is shown.
+  void _applyChange(String dbKey, dynamic newValue) {
+    // Write directly to automation-flags
+    PresetOverrideHelper.writeToAutomationFlags(dbKey, newValue);
+    // Accumulate the change
+    _pendingChanges[dbKey] = newValue;
+    print('[DEBUG] FanControlScreen: Applied $dbKey = $newValue '
+        '(pending: $_pendingChanges)');
   }
 
-  /// Update fan toggle state — with preset override check
+  /// Update fan toggle state
   void _updateFanState(bool value) {
-    _handleToggleWithPresetCheck(
-      dbKey: 'fan',
-      newValue: value,
-      deviceName: 'Fan',
-    );
+    _applyChange('fan', value);
   }
 
-  /// Update fan speed value — with preset override check
+  /// Update fan speed value
   void _updateFanSpeed(int speed) {
     final clampedSpeed = speed.clamp(1, 5);
-    _handleToggleWithPresetCheck(
-      dbKey: 'fan-speed',
-      newValue: clampedSpeed,
-      deviceName: 'Fan Speed',
-    );
+    _applyChange('fan-speed', clampedSpeed);
   }
 
   /// Decrease fan speed
@@ -196,150 +178,216 @@ class _FanControlScreenState extends State<FanControlScreen> {
     _updateFanSpeed(newSpeed);
   }
 
+  // ---------------------------------------------------------------------------
+  // Exit handling — show single dialog if changes differ from preset
+  // ---------------------------------------------------------------------------
+
+  /// Called when the user tries to leave the screen (back button or home logo).
+  /// Shows the exit override dialog if there are pending preset diffs.
+  Future<void> _handleExit({bool isHomeTap = false}) async {
+    if (PresetOverrideHelper.hasPendingPresetChanges(
+      activePreset: _activePreset,
+      pendingChanges: _pendingChanges,
+    )) {
+      final shouldPop = await PresetOverrideHelper.showExitOverrideDialog(
+        context: context,
+        activePreset: _activePreset!,
+        pendingChanges: _pendingChanges,
+      );
+      if (!shouldPop || !mounted) return;
+    }
+
+    if (!mounted) return;
+
+    if (isHomeTap) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        CupertinoPageRoute(
+          builder: (BuildContext context) => HomeScreen(),
+        ),
+        ModalRoute.withName('/home'),
+      );
+    } else {
+      Navigator.pop(context);
+    }
+  }
+
+  /// PopScope callback — intercepts system back gesture / button.
+  Future<bool> _onPopInvoked() async {
+    if (PresetOverrideHelper.hasPendingPresetChanges(
+      activePreset: _activePreset,
+      pendingChanges: _pendingChanges,
+    )) {
+      final shouldPop = await PresetOverrideHelper.showExitOverrideDialog(
+        context: context,
+        activePreset: _activePreset!,
+        pendingChanges: _pendingChanges,
+      );
+      return shouldPop;
+    }
+    return true;
+  }
+
   @override
   Widget build(BuildContext context) {
     final primaryColor = CupertinoTheme.of(context).primaryColor;
     final theme = CupertinoTheme.of(context);
 
-    return CupertinoPageScaffold(
-      backgroundColor: CupertinoColors.systemBackground,
-      child: Column(
-        children: [
-          // Use existing NavbarSetup widget
-          NavbarSetup(theme: theme, imgPath: 'fan', label: 'Fan'),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final shouldPop = await _onPopInvoked();
+        if (shouldPop && mounted) {
+          Navigator.pop(context);
+        }
+      },
+      child: CupertinoPageScaffold(
+        backgroundColor: CupertinoColors.systemBackground,
+        child: Column(
+          children: [
+            // Use existing NavbarSetup widget — with exit interception
+            NavbarSetup(
+              theme: theme,
+              imgPath: 'fan',
+              label: 'Fan',
+              onBackPressed: () => _handleExit(),
+              onHomeTap: () => _handleExit(isHomeTap: true),
+            ),
 
-          // Main content area
-          Expanded(
-            child: _isLoading
-                ? Center(child: CupertinoActivityIndicator())
-                : Container(
-                    color: CupertinoColors.systemBackground,
-                    padding: EdgeInsets.only(
-                      left: 60.0,
-                      top: 30.0,
-                      bottom: 40.0,
-                      right: 0.0,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Title with icon and toggle - "Fan"
-                        Row(
-                          children: [
-                            Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                color: primaryColor,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Padding(
-                                padding: EdgeInsets.all(10),
-                                child: Image.asset(
-                                  'images/fan.png',
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                            SizedBox(width: 35),
-                            Text(
-                              'Fan',
-                              style: TextStyle(
-                                fontSize: 26,
-                                fontWeight: FontWeight.w600,
-                                color: CupertinoColors.black,
-                              ),
-                            ),
-                            SizedBox(width: 20),
-                            // Power toggle switch - synced with Firebase
-                            CupertinoSwitch(
-                              value: isFanOn,
-                              onChanged: (val) {
-                                setState(() => isFanOn = val);
-                                _updateFanState(val);
-                              },
-                              activeColor: primaryColor,
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 30),
-
-                        // Main content row
-                        Expanded(
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
+            // Main content area
+            Expanded(
+              child: _isLoading
+                  ? Center(child: CupertinoActivityIndicator())
+                  : Container(
+                      color: CupertinoColors.systemBackground,
+                      padding: EdgeInsets.only(
+                        left: 60.0,
+                        top: 30.0,
+                        bottom: 40.0,
+                        right: 0.0,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Title with icon and toggle - "Fan"
+                          Row(
                             children: [
-                              // Left section: Fan image
-                              Expanded(
-                                flex: 2,
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color: Color(0xFFF5F0EB),
-                                    borderRadius: BorderRadius.circular(20),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.1),
-                                        blurRadius: 15,
-                                        offset: Offset(0, 5),
-                                      ),
-                                    ],
-                                  ),
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(20),
-                                    child: Image.asset(
-                                      'images/fan-small.png',
-                                      fit: BoxFit.cover,
-                                      errorBuilder:
-                                          (context, error, stackTrace) {
-                                            return Container(
-                                              color: Color(0xFFF5F0EB),
-                                              child: Center(
-                                                child: Image.asset(
-                                                  'images/fan.png',
-                                                  width: 80,
-                                                  height: 80,
-                                                  color: Colors.grey[500],
-                                                ),
-                                              ),
-                                            );
-                                          },
-                                    ),
+                              Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color: primaryColor,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Padding(
+                                  padding: EdgeInsets.all(10),
+                                  child: Image.asset(
+                                    'images/fan.png',
+                                    color: Colors.white,
                                   ),
                                 ),
                               ),
-                              SizedBox(width: 30),
-
-                              // Right section: Speed control panel
-                              Expanded(
-                                flex: 3,
-                                child: Center(
-                                  child: Container(
-                                    height: 250.0,
-                                    decoration: BoxDecoration(
-                                      color: Color(0xFFF5F0EB),
-                                      borderRadius: BorderRadius.only(
-                                        topLeft: Radius.circular(25.0),
-                                        bottomLeft: Radius.circular(25.0),
-                                        topRight: Radius.circular(0.0),
-                                        bottomRight: Radius.circular(0.0),
-                                      ),
-                                    ),
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: 40,
-                                      vertical: 30,
-                                    ),
-                                    child: _buildSpeedControl(primaryColor),
-                                  ),
+                              SizedBox(width: 35),
+                              Text(
+                                'Fan',
+                                style: TextStyle(
+                                  fontSize: 26,
+                                  fontWeight: FontWeight.w600,
+                                  color: CupertinoColors.black,
                                 ),
+                              ),
+                              SizedBox(width: 20),
+                              // Power toggle switch - synced with Firebase
+                              CupertinoSwitch(
+                                value: isFanOn,
+                                onChanged: (val) {
+                                  setState(() => isFanOn = val);
+                                  _updateFanState(val);
+                                },
+                                activeColor: primaryColor,
                               ),
                             ],
                           ),
-                        ),
-                      ],
+                          SizedBox(height: 30),
+
+                          // Main content row
+                          Expanded(
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                // Left section: Fan image
+                                Expanded(
+                                  flex: 2,
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: Color(0xFFF5F0EB),
+                                      borderRadius: BorderRadius.circular(20),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.1),
+                                          blurRadius: 15,
+                                          offset: Offset(0, 5),
+                                        ),
+                                      ],
+                                    ),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(20),
+                                      child: Image.asset(
+                                        'images/fan-small.png',
+                                        fit: BoxFit.cover,
+                                        errorBuilder:
+                                            (context, error, stackTrace) {
+                                              return Container(
+                                                color: Color(0xFFF5F0EB),
+                                                child: Center(
+                                                  child: Image.asset(
+                                                    'images/fan.png',
+                                                    width: 80,
+                                                    height: 80,
+                                                    color: Colors.grey[500],
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(width: 30),
+
+                                // Right section: Speed control panel
+                                Expanded(
+                                  flex: 3,
+                                  child: Center(
+                                    child: Container(
+                                      height: 250.0,
+                                      decoration: BoxDecoration(
+                                        color: Color(0xFFF5F0EB),
+                                        borderRadius: BorderRadius.only(
+                                          topLeft: Radius.circular(25.0),
+                                          bottomLeft: Radius.circular(25.0),
+                                          topRight: Radius.circular(0.0),
+                                          bottomRight: Radius.circular(0.0),
+                                        ),
+                                      ),
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: 40,
+                                        vertical: 30,
+                                      ),
+                                      child: _buildSpeedControl(primaryColor),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }

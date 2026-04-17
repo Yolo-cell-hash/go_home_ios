@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:godrej_home/widgets/navbar_setup.dart';
 import 'package:godrej_home/services/preset_override_helper.dart';
+import 'package:godrej_home/screens/home_screen.dart';
 
 /// Smart Light control screen
 class LightControlScreen extends StatefulWidget {
@@ -23,6 +24,10 @@ class _LightControlScreenState extends State<LightControlScreen> {
 
   // Cached active preset — fetched once on screen open
   ActivePresetInfo? _activePreset;
+
+  // Accumulated changes made during this session (dbKey → latest value).
+  // Compared against _activePreset on exit to decide whether to prompt.
+  final Map<String, dynamic> _pendingChanges = {};
 
   // Firebase database reference
   final DatabaseReference _dbRef = FirebaseDatabase.instance.ref(
@@ -206,52 +211,27 @@ class _LightControlScreenState extends State<LightControlScreen> {
     }
   }
 
-  /// Check cached preset and either show dialog or write directly.
-  /// This is SYNCHRONOUS for the comparison — no async gap before dialog.
-  void _handleToggleWithPresetCheck({
-    required String dbKey,
-    required dynamic newValue,
-    required String deviceName,
-  }) {
-    if (PresetOverrideHelper.shouldShowDialog(
-      activePreset: _activePreset,
-      dbKey: dbKey,
-      newValue: newValue,
-    )) {
-      // Values differ from preset — show dialog
-      PresetOverrideHelper.showOverrideDialog(
-        context: context,
-        activePreset: _activePreset!,
-        dbKey: dbKey,
-        newValue: newValue,
-        deviceName: deviceName,
-        onPresetUpdated: (key, val) {
-          // Update local cache so subsequent toggles use the new value
-          _activePreset?.presetData[key] = val;
-        },
-      );
-    } else {
-      // No preset active or values match — write directly
-      PresetOverrideHelper.writeToAutomationFlags(dbKey, newValue);
-    }
+  // ---------------------------------------------------------------------------
+  // Deferred override: write immediately, accumulate for exit prompt
+  // ---------------------------------------------------------------------------
+
+  /// Apply a change immediately (automation-flags) and record it for the exit
+  /// dialog. No per-change dialog is shown.
+  void _applyChange(String dbKey, dynamic newValue) {
+    PresetOverrideHelper.writeToAutomationFlags(dbKey, newValue);
+    _pendingChanges[dbKey] = newValue;
+    print('[DEBUG] LightControlScreen: Applied $dbKey = $newValue '
+        '(pending: $_pendingChanges)');
   }
 
-  /// Update light toggle state — with preset override check
+  /// Update light toggle state
   void _updateLightState(bool value) {
-    _handleToggleWithPresetCheck(
-      dbKey: 'light',
-      newValue: value,
-      deviceName: 'Light',
-    );
+    _applyChange('light', value);
   }
 
-  /// Update party state — with preset override check
+  /// Update party state
   void _updatePartyState(bool value) {
-    _handleToggleWithPresetCheck(
-      dbKey: 'party',
-      newValue: value,
-      deviceName: 'Party Mode',
-    );
+    _applyChange('party', value);
   }
 
   /// Toggle party mode
@@ -264,24 +244,16 @@ class _LightControlScreenState extends State<LightControlScreen> {
     _updatePartyState(newState);
   }
 
-  /// Update RGB color value — with preset override check
+  /// Update RGB color value
   void _updateRgbColor(Color color) {
     final rgbValue = _colorToRgb(color);
-    _handleToggleWithPresetCheck(
-      dbKey: 'light-hex-value',
-      newValue: rgbValue,
-      deviceName: 'Light Color',
-    );
+    _applyChange('light-hex-value', rgbValue);
   }
 
-  /// Update light intensity value — with preset override check
+  /// Update light intensity value
   void _updateIntensity(double brightnessValue) {
     final intensity = (brightnessValue * 255).round().clamp(0, 255);
-    _handleToggleWithPresetCheck(
-      dbKey: 'light intensity',
-      newValue: intensity,
-      deviceName: 'Light Intensity',
-    );
+    _applyChange('light intensity', intensity);
   }
 
   /// Convert Color to RGB string (e.g., "255,235,59")
@@ -324,257 +296,322 @@ class _LightControlScreenState extends State<LightControlScreen> {
     });
   }
 
+  // ---------------------------------------------------------------------------
+  // Exit handling — show single dialog if changes differ from preset
+  // ---------------------------------------------------------------------------
+
+  /// Called when the user tries to leave the screen (back button or home logo).
+  Future<void> _handleExit({bool isHomeTap = false}) async {
+    if (PresetOverrideHelper.hasPendingPresetChanges(
+      activePreset: _activePreset,
+      pendingChanges: _pendingChanges,
+    )) {
+      final shouldPop = await PresetOverrideHelper.showExitOverrideDialog(
+        context: context,
+        activePreset: _activePreset!,
+        pendingChanges: _pendingChanges,
+      );
+      if (!shouldPop || !mounted) return;
+    }
+
+    if (!mounted) return;
+
+    if (isHomeTap) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        CupertinoPageRoute(
+          builder: (BuildContext context) => HomeScreen(),
+        ),
+        ModalRoute.withName('/home'),
+      );
+    } else {
+      Navigator.pop(context);
+    }
+  }
+
+  /// PopScope callback — intercepts system back gesture / button.
+  Future<bool> _onPopInvoked() async {
+    if (PresetOverrideHelper.hasPendingPresetChanges(
+      activePreset: _activePreset,
+      pendingChanges: _pendingChanges,
+    )) {
+      final shouldPop = await PresetOverrideHelper.showExitOverrideDialog(
+        context: context,
+        activePreset: _activePreset!,
+        pendingChanges: _pendingChanges,
+      );
+      return shouldPop;
+    }
+    return true;
+  }
+
   @override
   Widget build(BuildContext context) {
     final primaryColor = CupertinoTheme.of(context).primaryColor;
     final theme = CupertinoTheme.of(context);
 
-    return CupertinoPageScaffold(
-      backgroundColor: CupertinoColors.systemBackground,
-      child: Column(
-        children: [
-          // Use existing NavbarSetup widget
-          NavbarSetup(theme: theme, imgPath: 'light', label: 'Smart Lighting'),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final shouldPop = await _onPopInvoked();
+        if (shouldPop && mounted) {
+          Navigator.pop(context);
+        }
+      },
+      child: CupertinoPageScaffold(
+        backgroundColor: CupertinoColors.systemBackground,
+        child: Column(
+          children: [
+            // Use existing NavbarSetup widget — with exit interception
+            NavbarSetup(
+              theme: theme,
+              imgPath: 'light',
+              label: 'Smart Lighting',
+              onBackPressed: () => _handleExit(),
+              onHomeTap: () => _handleExit(isHomeTap: true),
+            ),
 
-          // Main content area
-          Expanded(
-            child: _isLoading
-                ? Center(child: CupertinoActivityIndicator())
-                : Container(
-                    color: CupertinoColors.systemBackground,
-                    padding: EdgeInsets.only(
-                      left: 60.0,
-                      top: 30.0,
-                      bottom: 40.0,
-                      right: 0.0,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Title with icon and toggle - "Light"
-                        Row(
-                          children: [
-                            Container(
-                              width: 50,
-                              height: 50,
-                              decoration: BoxDecoration(
-                                color: primaryColor,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                CupertinoIcons.lightbulb,
-                                size: 28.0,
-                                color: Colors.white,
-                              ),
-                            ),
-                            SizedBox(width: 15),
-                            Text(
-                              'Light',
-                              style: TextStyle(
-                                fontSize: 26,
-                                fontWeight: FontWeight.w600,
-                                color: CupertinoColors.black,
-                              ),
-                            ),
-                            SizedBox(width: 20),
-                            // Power toggle switch - synced with Firebase
-                            CupertinoSwitch(
-                              value: isLightOn,
-                              onChanged: (val) {
-                                setState(() => isLightOn = val);
-                                _updateLightState(val);
-                              },
-                              activeColor: primaryColor,
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 30),
-
-                        // Main content row
-                        Expanded(
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
+            // Main content area
+            Expanded(
+              child: _isLoading
+                  ? Center(child: CupertinoActivityIndicator())
+                  : Container(
+                      color: CupertinoColors.systemBackground,
+                      padding: EdgeInsets.only(
+                        left: 60.0,
+                        top: 30.0,
+                        bottom: 40.0,
+                        right: 0.0,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Title with icon and toggle - "Light"
+                          Row(
                             children: [
-                              // Left section: Light image
-                              Expanded(
-                                flex: 2,
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color: Color(0xFFF5F0EB),
-                                    borderRadius: BorderRadius.circular(20),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.1),
-                                        blurRadius: 15,
-                                        offset: Offset(0, 5),
-                                      ),
-                                    ],
-                                  ),
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(20),
-                                    child: Stack(
-                                      children: [
-                                        // Light image
-                                        Positioned.fill(
-                                          child: Image.asset(
-                                            'images/big_bulb.png',
-                                            fit: BoxFit.cover,
-                                            errorBuilder:
-                                                (context, error, stackTrace) {
-                                                  return Container(
-                                                    color: Color(0xFFF5F0EB),
-                                                    child: Center(
-                                                      child: Icon(
-                                                        CupertinoIcons
-                                                            .lightbulb_fill,
-                                                        size: 80,
-                                                        color: Colors.grey[500],
-                                                      ),
-                                                    ),
-                                                  );
-                                                },
-                                          ),
+                              Container(
+                                width: 50,
+                                height: 50,
+                                decoration: BoxDecoration(
+                                  color: primaryColor,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  CupertinoIcons.lightbulb,
+                                  size: 28.0,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              SizedBox(width: 15),
+                              Text(
+                                'Light',
+                                style: TextStyle(
+                                  fontSize: 26,
+                                  fontWeight: FontWeight.w600,
+                                  color: CupertinoColors.black,
+                                ),
+                              ),
+                              SizedBox(width: 20),
+                              // Power toggle switch - synced with Firebase
+                              CupertinoSwitch(
+                                value: isLightOn,
+                                onChanged: (val) {
+                                  setState(() => isLightOn = val);
+                                  _updateLightState(val);
+                                },
+                                activeColor: primaryColor,
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 30),
+
+                          // Main content row
+                          Expanded(
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                // Left section: Light image
+                                Expanded(
+                                  flex: 2,
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: Color(0xFFF5F0EB),
+                                      borderRadius: BorderRadius.circular(20),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.1),
+                                          blurRadius: 15,
+                                          offset: Offset(0, 5),
                                         ),
-                                        // Glow overlay
-                                        if (isLightOn)
-                                          Positioned(
-                                            bottom: 0,
-                                            left: 0,
-                                            right: 0,
-                                            height: 120,
-                                            child: AnimatedOpacity(
-                                              duration: Duration(
-                                                milliseconds: 300,
-                                              ),
-                                              opacity: brightness,
-                                              child: Container(
-                                                decoration: BoxDecoration(
-                                                  gradient: LinearGradient(
-                                                    begin:
-                                                        Alignment.bottomCenter,
-                                                    end: Alignment.topCenter,
-                                                    colors: [
-                                                      selectedColor.withOpacity(
-                                                        0.6,
+                                      ],
+                                    ),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(20),
+                                      child: Stack(
+                                        children: [
+                                          // Light image
+                                          Positioned.fill(
+                                            child: Image.asset(
+                                              'images/big_bulb.png',
+                                              fit: BoxFit.cover,
+                                              errorBuilder:
+                                                  (context, error, stackTrace) {
+                                                    return Container(
+                                                      color: Color(0xFFF5F0EB),
+                                                      child: Center(
+                                                        child: Icon(
+                                                          CupertinoIcons
+                                                              .lightbulb_fill,
+                                                          size: 80,
+                                                          color: Colors.grey[500],
+                                                        ),
                                                       ),
-                                                      selectedColor.withOpacity(
-                                                        0.0,
-                                                      ),
-                                                    ],
+                                                    );
+                                                  },
+                                            ),
+                                          ),
+                                          // Glow overlay
+                                          if (isLightOn)
+                                            Positioned(
+                                              bottom: 0,
+                                              left: 0,
+                                              right: 0,
+                                              height: 120,
+                                              child: AnimatedOpacity(
+                                                duration: Duration(
+                                                  milliseconds: 300,
+                                                ),
+                                                opacity: brightness,
+                                                child: Container(
+                                                  decoration: BoxDecoration(
+                                                    gradient: LinearGradient(
+                                                      begin:
+                                                          Alignment.bottomCenter,
+                                                      end: Alignment.topCenter,
+                                                      colors: [
+                                                        selectedColor.withOpacity(
+                                                          0.6,
+                                                        ),
+                                                        selectedColor.withOpacity(
+                                                          0.0,
+                                                        ),
+                                                      ],
+                                                    ),
                                                   ),
                                                 ),
                                               ),
                                             ),
-                                          ),
-                                      ],
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
-                              SizedBox(width: 20),
+                                SizedBox(width: 20),
 
-                              // Vertical brightness slider
-                              _buildVerticalBrightnessSlider(primaryColor),
-                              SizedBox(width: 25),
+                                // Vertical brightness slider
+                                _buildVerticalBrightnessSlider(primaryColor),
+                                SizedBox(width: 25),
 
-                              // Color picker section
-                              Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  _buildColorWheel(primaryColor),
-                                  SizedBox(height: 20),
-                                  _buildColorPresets(primaryColor),
-                                ],
-                              ),
-                              SizedBox(width: 20.0),
+                                // Color picker section
+                                Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    _buildColorWheel(primaryColor),
+                                    SizedBox(height: 20),
+                                    _buildColorPresets(primaryColor),
+                                  ],
+                                ),
+                                SizedBox(width: 20.0),
 
-                              // Right section: Control buttons panel
-                              Expanded(
-                                flex: 3,
-                                child: Center(
-                                  child: Container(
-                                    height: 300.0,
-                                    decoration: BoxDecoration(
-                                      color: Color(0xFFF5F0EB),
-                                      borderRadius: BorderRadius.circular(25),
-                                    ),
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: 40,
-                                      vertical: 20,
-                                    ),
-                                    child: Column(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        // First row: Night & Saver
-                                        Expanded(
-                                          child: Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.spaceEvenly,
-                                            children: [
-                                              _buildElegantButton(
-                                                icon: CupertinoIcons.moon_fill,
-                                                label: 'Night',
-                                                primaryColor: primaryColor,
-                                                onTap: () {
-                                                  setState(() {
-                                                    brightness = 0.2;
-                                                    selectedColor = Color(
-                                                      0xFFFFE0B2,
+                                // Right section: Control buttons panel
+                                Expanded(
+                                  flex: 3,
+                                  child: Center(
+                                    child: Container(
+                                      height: 300.0,
+                                      decoration: BoxDecoration(
+                                        color: Color(0xFFF5F0EB),
+                                        borderRadius: BorderRadius.circular(25),
+                                      ),
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: 40,
+                                        vertical: 20,
+                                      ),
+                                      child: Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          // First row: Night & Saver
+                                          Expanded(
+                                            child: Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.spaceEvenly,
+                                              children: [
+                                                _buildElegantButton(
+                                                  icon: CupertinoIcons.moon_fill,
+                                                  label: 'Night',
+                                                  primaryColor: primaryColor,
+                                                  onTap: () {
+                                                    setState(() {
+                                                      brightness = 0.2;
+                                                      selectedColor = Color(
+                                                        0xFFFFE0B2,
+                                                      );
+                                                    });
+                                                    _updateRgbColor(
+                                                      Color(0xFFFFE0B2),
                                                     );
-                                                  });
-                                                  _updateRgbColor(
-                                                    Color(0xFFFFE0B2),
-                                                  );
-                                                  _updateIntensity(0.2);
-                                                },
-                                              ),
-                                              _buildElegantButton(
-                                                icon: CupertinoIcons
-                                                    .leaf_arrow_circlepath,
-                                                label: 'Saver',
-                                                primaryColor: primaryColor,
-                                                onTap: () {
-                                                  setState(() {
-                                                    brightness = 0.5;
-                                                    selectedColor = Color(
-                                                      0xFFFFF9C4,
+                                                    _updateIntensity(0.2);
+                                                  },
+                                                ),
+                                                _buildElegantButton(
+                                                  icon: CupertinoIcons
+                                                      .leaf_arrow_circlepath,
+                                                  label: 'Saver',
+                                                  primaryColor: primaryColor,
+                                                  onTap: () {
+                                                    setState(() {
+                                                      brightness = 0.5;
+                                                      selectedColor = Color(
+                                                        0xFFFFF9C4,
+                                                      );
+                                                    });
+                                                    _updateRgbColor(
+                                                      Color(0xFFFFF9C4),
                                                     );
-                                                  });
-                                                  _updateRgbColor(
-                                                    Color(0xFFFFF9C4),
-                                                  );
-                                                  _updateIntensity(0.5);
-                                                },
-                                              ),
-                                            ],
+                                                    _updateIntensity(0.5);
+                                                  },
+                                                ),
+                                              ],
+                                            ),
                                           ),
-                                        ),
-                                        // Second row: Party (centered)
-                                        Expanded(
-                                          child: Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            children: [
-                                              _buildPartyButton(
-                                                primaryColor: primaryColor,
-                                              ),
-                                            ],
+                                          // Second row: Party (centered)
+                                          Expanded(
+                                            child: Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                _buildPartyButton(
+                                                  primaryColor: primaryColor,
+                                                ),
+                                              ],
+                                            ),
                                           ),
-                                        ),
-                                      ],
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }

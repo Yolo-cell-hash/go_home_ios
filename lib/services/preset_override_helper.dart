@@ -288,6 +288,186 @@ class PresetOverrideHelper {
   }
 
   // ---------------------------------------------------------------------------
+  // Deferred override (prompt on exit, not on every change)
+  // ---------------------------------------------------------------------------
+
+  /// Check whether any entries in [pendingChanges] differ from the cached
+  /// [activePreset]. Returns `true` when the exit dialog should be shown.
+  static bool hasPendingPresetChanges({
+    required ActivePresetInfo? activePreset,
+    required Map<String, dynamic> pendingChanges,
+  }) {
+    if (activePreset == null || pendingChanges.isEmpty) return false;
+
+    for (final entry in pendingChanges.entries) {
+      final presetValue = activePreset.presetData[entry.key];
+      if (presetValue == null) continue; // key not in preset — skip
+      if (!_valuesEqual(presetValue, entry.value)) {
+        print('[PresetOverrideHelper] Pending diff: '
+            '${entry.key} preset=$presetValue current=${entry.value}');
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /// Collect all keys from [pendingChanges] that actually differ from the
+  /// cached preset. Returns a filtered map of only the differing entries.
+  static Map<String, dynamic> _getDifferingChanges({
+    required ActivePresetInfo activePreset,
+    required Map<String, dynamic> pendingChanges,
+  }) {
+    final diffs = <String, dynamic>{};
+    for (final entry in pendingChanges.entries) {
+      final presetValue = activePreset.presetData[entry.key];
+      if (presetValue == null) continue;
+      if (!_valuesEqual(presetValue, entry.value)) {
+        diffs[entry.key] = entry.value;
+      }
+    }
+    return diffs;
+  }
+
+  /// Human-readable labels for common DB keys.
+  static const Map<String, String> _keyLabels = {
+    'fan': 'Fan Power',
+    'fan-speed': 'Fan Speed',
+    'light': 'Light Power',
+    'light-hex-value': 'Light Color',
+    'light intensity': 'Light Intensity',
+    'party': 'Party Mode',
+    'ac': 'AC Power',
+    'ac-temp': 'AC Temperature',
+    'ac-mode': 'AC Mode',
+    'ac-fan-speed': 'AC Fan Speed',
+  };
+
+  /// Show a **single** exit dialog summarising all pending changes.\n
+  /// Called when the user tries to leave a control screen with unsaved diffs.
+  ///
+  /// - **"Keep as One-Time"** → pops without writing to preset.
+  /// - **"Save to Preset"** → writes all diffs to the preset, then pops.
+  ///
+  /// Returns a [Future<bool>] — `true` means the caller should allow the pop.
+  static Future<bool> showExitOverrideDialog({
+    required BuildContext context,
+    required ActivePresetInfo activePreset,
+    required Map<String, dynamic> pendingChanges,
+  }) async {
+    final diffs = _getDifferingChanges(
+      activePreset: activePreset,
+      pendingChanges: pendingChanges,
+    );
+
+    if (diffs.isEmpty) return true; // nothing to save — allow pop
+
+    // Build human-readable change summary
+    final changeList = diffs.keys
+        .map((k) => _keyLabels[k] ?? k)
+        .toList();
+    final summary = changeList.length == 1
+        ? changeList.first
+        : '${changeList.sublist(0, changeList.length - 1).join(", ")} and ${changeList.last}';
+
+    print('[PresetOverrideHelper] showExitOverrideDialog: '
+        'preset="${activePreset.presetLabel}", diffs=$diffs');
+
+    final result = await showCupertinoDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return CupertinoAlertDialog(
+          title: const Text('Unsaved Changes'),
+          content: Padding(
+            padding: const EdgeInsets.only(top: 10.0),
+            child: Text(
+              'You changed $summary which differs from your '
+              '"${activePreset.presetLabel}" preset.\n\n'
+              'Would you like to keep this as a one-time change, '
+              'or save it to your "${activePreset.presetLabel}" preset?',
+            ),
+          ),
+          actions: [
+            // ── Keep as One-Time ──
+            CupertinoDialogAction(
+              onPressed: () {
+                Navigator.of(dialogContext).pop(true);
+                print('[PresetOverrideHelper] Exit: one-time only');
+              },
+              child: const Text('One-Time Only'),
+            ),
+            // ── Save to Preset ──
+            CupertinoDialogAction(
+              isDefaultAction: true,
+              onPressed: () async {
+                Navigator.of(dialogContext).pop(true);
+
+                // Write all diffs to the preset store
+                if (activePreset.isUserProfile &&
+                    activePreset.resolvedUserKey != null) {
+                  try {
+                    final presetsRef =
+                        FirebaseDatabase.instance.ref('presets');
+                    for (final entry in diffs.entries) {
+                      await presetsRef
+                          .child(activePreset.resolvedUserKey!)
+                          .child(entry.key)
+                          .set(entry.value);
+                    }
+                    print('[PresetOverrideHelper] Exit: user preset '
+                        '${activePreset.resolvedUserKey} updated with $diffs');
+                  } catch (e) {
+                    print('[PresetOverrideHelper] Failed to update user '
+                        'preset on exit: $e');
+                  }
+                } else if (!activePreset.isUserProfile &&
+                    activePreset.sceneIndex >= 0) {
+                  for (final entry in diffs.entries) {
+                    await PresetManager.updatePresetValue(
+                      activePreset.sceneIndex,
+                      entry.key,
+                      entry.value,
+                    );
+                  }
+                  print('[PresetOverrideHelper] Exit: scene preset '
+                      '${activePreset.sceneIndex} updated with $diffs');
+                }
+
+                // Show confirmation
+                if (context.mounted) {
+                  showCupertinoDialog(
+                    context: context,
+                    builder: (ctx) => CupertinoAlertDialog(
+                      title: const Text('Preset Updated'),
+                      content: Padding(
+                        padding: const EdgeInsets.only(top: 8.0),
+                        child: Text(
+                          '"${activePreset.presetLabel}" preset has been '
+                          'updated with your changes.',
+                        ),
+                      ),
+                      actions: [
+                        CupertinoDialogAction(
+                          isDefaultAction: true,
+                          onPressed: () => Navigator.of(ctx).pop(),
+                          child: const Text('OK'),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+              },
+              child: const Text('Save to Preset'),
+            ),
+          ],
+        );
+      },
+    );
+
+    return result ?? true;
+  }
+
+  // ---------------------------------------------------------------------------
   // Private helpers
   // ---------------------------------------------------------------------------
 

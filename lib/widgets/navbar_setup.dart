@@ -10,10 +10,21 @@ class NavbarSetup extends StatefulWidget {
     required this.theme,
     required this.imgPath,
     required this.label,
+    this.onBackPressed,
+    this.onHomeTap,
   });
 
   final CupertinoThemeData theme;
   final String imgPath, label;
+
+  /// Optional callback invoked when the back button is tapped.
+  /// If provided, this replaces the default `Navigator.pop(context)`.
+  /// The callback should handle navigation (popping) itself.
+  final VoidCallback? onBackPressed;
+
+  /// Optional callback invoked when the home logo is tapped.
+  /// If provided, this replaces the default pushAndRemoveUntil to HomeScreen.
+  final VoidCallback? onHomeTap;
 
   @override
   State<NavbarSetup> createState() => _NavbarSetupState();
@@ -40,7 +51,11 @@ class _NavbarSetupState extends State<NavbarSetup> {
               // Back button - consistent with room_control_screen style
               GestureDetector(
                 onTap: () {
-                  Navigator.pop(context);
+                  if (widget.onBackPressed != null) {
+                    widget.onBackPressed!();
+                  } else {
+                    Navigator.pop(context);
+                  }
                 },
                 child: Container(
                   padding: const EdgeInsets.all(8),
@@ -61,13 +76,17 @@ class _NavbarSetupState extends State<NavbarSetup> {
               SizedBox(width: 45.0),
               GestureDetector(
                 onTap: () {
-                  Navigator.pushAndRemoveUntil(
-                    context,
-                    CupertinoPageRoute(
-                      builder: (BuildContext context) => HomeScreen(),
-                    ),
-                    ModalRoute.withName('/home'),
-                  );
+                  if (widget.onHomeTap != null) {
+                    widget.onHomeTap!();
+                  } else {
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      CupertinoPageRoute(
+                        builder: (BuildContext context) => HomeScreen(),
+                      ),
+                      ModalRoute.withName('/home'),
+                    );
+                  }
                 },
                 child: SvgPicture.asset(
                   'images/Group 133-cropped.svg',

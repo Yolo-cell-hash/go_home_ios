@@ -728,6 +728,32 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
   // Used by _handleToggleWithSceneCheck to detect overrides.
   Map<String, dynamic>? _activeUserPreset;
 
+  /// Reload the active user/scene preset from Firebase/SharedPreferences.
+  /// Called after returning from any sub-screen so that the home screen's
+  /// toggle override detection uses the latest preset values (including any
+  /// modifications the user saved in the sub-screen).
+  Future<void> _reloadActivePreset() async {
+    if (_activeUserName != null) {
+      // Reload user preset from Firebase /presets/{user}
+      try {
+        final presetSnapshot =
+            await _presetsRef.child(_activeUserName!).get();
+        if (presetSnapshot.exists && presetSnapshot.value is Map) {
+          _activeUserPreset =
+              Map<String, dynamic>.from(presetSnapshot.value as Map);
+          print('[DEBUG] Reloaded user preset for $_activeUserName: '
+              '$_activeUserPreset');
+        }
+      } catch (e) {
+        print('[ERROR] Failed to reload user preset: $e');
+      }
+    } else if (_selectedHomeScene >= 0) {
+      // Scene presets live in SharedPreferences — reload in case
+      // the sub-screen updated them via PresetManager
+      print('[DEBUG] Reloaded scene preset $_selectedHomeScene');
+    }
+  }
+
   /// Handle profile selection from dropdown.
   /// Fetches preset purely from Firebase /presets/{userName} and writes to
   /// /automation-flags. Caches the fetched preset in _activeUserPreset for
@@ -1301,7 +1327,7 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
   }
 
   /// Handle living room control long press for navigation
-  void _handleLivingRoomLongPress(int index) {
+  void _handleLivingRoomLongPress(int index) async {
     print(
       '[DEBUG] Living room item $index long pressed - navigating to detail screen',
     );
@@ -1335,13 +1361,16 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
         return;
     }
 
-    Navigator.of(
+    await Navigator.of(
       context,
     ).push(CupertinoPageRoute(builder: (context) => targetScreen!));
+
+    // Reload preset after returning — sub-screen may have saved changes
+    _reloadActivePreset();
   }
 
   /// Handle kitchen control long press for navigation
-  void _handleKitchenLongPress(int index) {
+  void _handleKitchenLongPress(int index) async {
     print(
       '[DEBUG] Kitchen item $index long pressed - navigating to detail screen',
     );
@@ -1363,13 +1392,16 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
         return;
     }
 
-    Navigator.of(
+    await Navigator.of(
       context,
     ).push(CupertinoPageRoute(builder: (context) => targetScreen!));
+
+    // Reload preset after returning — sub-screen may have saved changes
+    _reloadActivePreset();
   }
 
   /// Handle bedroom control long press for navigation
-  void _handleBedroomLongPress(int index) {
+  void _handleBedroomLongPress(int index) async {
     print(
       '[DEBUG] Bedroom item $index long pressed - navigating to detail screen',
     );
@@ -1394,9 +1426,12 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
         return;
     }
 
-    Navigator.of(
+    await Navigator.of(
       context,
     ).push(CupertinoPageRoute(builder: (context) => targetScreen!));
+
+    // Reload preset after returning — sub-screen may have saved changes
+    _reloadActivePreset();
   }
 
   /// Build page indicator dots
