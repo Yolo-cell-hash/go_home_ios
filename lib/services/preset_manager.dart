@@ -25,6 +25,8 @@ class PresetManager {
       'light intensity': 50,
       'ac': true,
       'ac-temp': 24,
+      'ac-mode': 'cool',
+      'ac-fan-speed': 'Auto',
       'light-hex-value': '255,255,255',
       'camera': true,
       'door-lock': true,
@@ -42,6 +44,8 @@ class PresetManager {
     {
       'ac': true,
       'ac-temp': 20,
+      'ac-mode': 'cool',
+      'ac-fan-speed': 'Low',
       'light intensity': 120,
       'light-hex-value': '255,0,193',
       'camera': true,
@@ -60,6 +64,8 @@ class PresetManager {
     {
       'ac': true,
       'ac-temp': 21,
+      'ac-mode': 'cool',
+      'ac-fan-speed': 'High',
       'light intensity': 220,
       'light-hex-value': '255,0,193',
       'camera': true,
@@ -78,6 +84,8 @@ class PresetManager {
     {
       'ac': false,
       'ac-temp': 26,
+      'ac-mode': 'auto',
+      'ac-fan-speed': 'Auto',
       'light intensity': 0,
       'light-hex-value': '255,0,193',
       'camera': true,

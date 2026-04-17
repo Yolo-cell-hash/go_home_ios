@@ -10,6 +10,7 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:vibration/vibration.dart';
 import 'package:godrej_home/services/notification_service.dart';
 import 'package:godrej_home/services/preset_manager.dart';
+import 'package:godrej_home/services/godrej_ac_api_service.dart';
 
 // Import modular screen components
 import 'vertical_home/welcome_screen.dart';
@@ -199,6 +200,8 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
     _fetchFirebaseState();
     _setupFirebaseListener();
     _setupProfileListener();
+    // Initialize Godrej AC API service (login + auto token refresh)
+    GodrejAcApiService.instance.init();
     // NOTE: BLE is intentionally NOT initialized here
     // BLE initialization happens in BedStorageScreen when user navigates there
   }
@@ -365,6 +368,7 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
     _profileSubscription?.cancel();
     _vibrationTimer?.cancel();
     _pageController.dispose();
+    GodrejAcApiService.instance.dispose();
     super.dispose();
   }
 
@@ -781,6 +785,9 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
           await _dbRef.child(entry.key).set(entry.value);
         }
         print('[DEBUG] Profile preset written to Firebase for $userName');
+
+        // Sync AC-specific params to the Godrej AC cloud API (runs in background)
+        _syncAcPresetToApi(preset);
       } else {
         _activeUserPreset = null;
         print('[WARN] No preset found for $userName — nothing written');
@@ -828,6 +835,44 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
         },
       );
     }
+  }
+
+  /// Map Firebase preset keys → Godrej AC API param names.
+  /// Only sends params that exist in the preset map.
+  static const Map<String, String> _firebaseToAcApiKey = {
+    'ac': 'Power',
+    'ac-temp': 'Temperature',
+    'ac-mode': 'Mode',
+    'ac-fan-speed': 'Fan Speed',
+  };
+
+  /// Sync AC-related preset values to the Godrej AC cloud API.
+  /// Sends one PUT per parameter sequentially (API limitation).
+  /// If ac == false in the preset, only sends Power=false and skips
+  /// temperature/mode/fan-speed to avoid briefly turning the AC on.
+  Future<void> _syncAcPresetToApi(Map<String, dynamic> preset) async {
+    final api = GodrejAcApiService.instance;
+    final acPower = preset['ac'];
+
+    if (acPower == false) {
+      // AC should be OFF — only send the power-off command, skip everything else
+      print('[DEBUG] AC preset is OFF — sending Power=false only');
+      await api.setAcParam('Power', false);
+      print('[DEBUG] AC API sync complete (power off only)');
+      return;
+    }
+
+    // AC is ON — send all AC params sequentially
+    for (final entry in _firebaseToAcApiKey.entries) {
+      final fbKey = entry.key;
+      final apiKey = entry.value;
+      if (preset.containsKey(fbKey)) {
+        final value = preset[fbKey];
+        print('[DEBUG] Syncing AC API: $apiKey = $value');
+        await api.setAcParam(apiKey, value);
+      }
+    }
+    print('[DEBUG] AC API sync complete');
   }
 
   /// Handle welcome screen icon tap with Firebase sync
@@ -893,6 +938,9 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
       }
       // Write scene name to /profile so that welcome screen shows "Mumbai Home"
       await _dbRef.child('profile').set(PresetManager.sceneNames[index]);
+
+      // Sync AC-specific params to the Godrej AC cloud API (runs in background)
+      _syncAcPresetToApi(preset);
 
       // Toggle survailanceModeEnabled in /dev_env/ based on scene
       final devEnvRef = FirebaseDatabase.instance.ref('dev_env');
