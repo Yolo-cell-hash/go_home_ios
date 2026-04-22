@@ -46,7 +46,7 @@ const List<Map<String, String>> userIdMappings = [
   // Future users — uncomment and fill when IDs are known:
   // {'personId': 'XXXXXXXX', 'presetUser': 'jinay'},
   // {'personId': 'XXXXXXXX', 'presetUser': 'keyoor'},
-  // {'personId': 'XXXXXXXX', 'presetUser': 'saili'},
+  {'personId': '1DCD691B', 'presetUser': 'saili'},
 ];
 
 // ---------------------------------------------------------------------------
@@ -91,8 +91,10 @@ class BleUserScanner {
     }
     _disposed = false;
     _isRunning = true;
-    print('[BLE USER SCANNER] Starting background scan loop '
-        '(scan ${_scanDurationSec}s / pause ${_pauseDurationSec}s)');
+    print(
+      '[BLE USER SCANNER] Starting background scan loop '
+      '(scan ${_scanDurationSec}s / pause ${_pauseDurationSec}s)',
+    );
 
     // Listen for adapter state changes (BT on/off)
     _adapterSubscription?.cancel();
@@ -177,7 +179,9 @@ class BleUserScanner {
     _scanSubscription?.cancel();
     _scanSubscription = null;
 
-    print('[BLE USER SCANNER] ── Scan cycle end ── pausing ${_pauseDurationSec}s');
+    print(
+      '[BLE USER SCANNER] ── Scan cycle end ── pausing ${_pauseDurationSec}s',
+    );
 
     if (!_isRunning || _disposed) return;
 
@@ -236,8 +240,10 @@ class BleUserScanner {
     }
 
     final last8 = fullHex.substring(fullHex.length - 8).toUpperCase();
-    print('[BLE USER SCANNER] Device ${result.device.remoteId.str} '
-        'mfr data: $fullHex → last8: $last8');
+    print(
+      '[BLE USER SCANNER] Device ${result.device.remoteId.str} '
+      'mfr data: $fullHex → last8: $last8',
+    );
 
     // Look up person ID
     final presetUser = _idToUser[last8];
@@ -250,8 +256,10 @@ class BleUserScanner {
     if (_lastDetectionTime != null) {
       final elapsed = DateTime.now().difference(_lastDetectionTime!).inSeconds;
       if (elapsed < _detectionCooldownSec) {
-        print('[BLE USER SCANNER] Cooldown active (${_detectionCooldownSec - elapsed}s remaining) '
-            '— skipping detection for "$presetUser"');
+        print(
+          '[BLE USER SCANNER] Cooldown active (${_detectionCooldownSec - elapsed}s remaining) '
+          '— skipping detection for "$presetUser"',
+        );
         return;
       }
     }
