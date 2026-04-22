@@ -11,6 +11,7 @@ import 'package:vibration/vibration.dart';
 import 'package:godrej_home/services/notification_service.dart';
 import 'package:godrej_home/services/preset_manager.dart';
 import 'package:godrej_home/services/godrej_ac_api_service.dart';
+import 'package:godrej_home/services/ble_user_scanner.dart';
 
 // Import modular screen components
 import 'vertical_home/welcome_screen.dart';
@@ -119,10 +120,10 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
     1,
     2,
     1,
-    2,
     0,
     0,
-  ]; // AC starts as red (off), Firebase will update; Wardrobe greyed out
+    0,
+  ]; // AC starts as red (off), Firebase will update; BedStorage + Wardrobe greyed out
 
   // Control items data for each room (with dbKey for Firebase mapping)
   static const List<Map<String, dynamic>> livingRoomControls = [
@@ -181,8 +182,8 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
     {
       'icon': 'images/bed_storage.png',
       'label': 'Bed Storage',
-      'dbKey': 'bed-storage',
-    },
+      'dbKey': null,
+    }, // Disabled/greyed out
     {'icon': CupertinoIcons.lightbulb, 'label': 'Light', 'dbKey': null}, // grey
     {
       'icon': 'images/wardrobe.png',
@@ -202,8 +203,10 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
     _setupProfileListener();
     // Initialize Godrej AC API service (login + auto token refresh)
     GodrejAcApiService.instance.init();
-    // NOTE: BLE is intentionally NOT initialized here
-    // BLE initialization happens in BedStorageScreen when user navigates there
+
+    // Start background BLE scanner for digital lock user detection
+    // Runs silently — no UI shown. Detects users via lock advertisement payload.
+    _startBleUserScanner();
   }
 
   /// Fetch known user names dynamically from Firebase /presets (updates state)
@@ -360,6 +363,33 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
     });
   }
 
+  /// Start the background BLE user scanner.
+  /// Detects digital lock advertisement payloads and auto-applies presets.
+  void _startBleUserScanner() {
+    final scanner = BleUserScanner.instance;
+    scanner.onUserDetected = _handleBleUserDetected;
+    scanner.start();
+    print('[DEBUG] BLE user scanner started');
+  }
+
+  /// Called by BleUserScanner when a known user is detected via the
+  /// digital lock's BLE advertisement.
+  /// Skips if the detected user is already the active profile.
+  void _handleBleUserDetected(String userName) {
+    print('[DEBUG] BLE detected user: $userName (active: $_activeUserName)');
+
+    // Skip if this user is already active — no-op to avoid Firebase spam
+    if (_activeUserName != null &&
+        _activeUserName!.toLowerCase() == userName.toLowerCase()) {
+      print('[DEBUG] BLE user "$userName" already active — skipping');
+      return;
+    }
+
+    // Apply the detected user's preset via the existing profile selection flow
+    print('[DEBUG] BLE auto-applying preset for user "$userName"');
+    _handleProfileSelected(userName);
+  }
+
   @override
   void dispose() {
     _firebaseSubscription?.cancel();
@@ -369,6 +399,7 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
     _vibrationTimer?.cancel();
     _pageController.dispose();
     GodrejAcApiService.instance.dispose();
+    BleUserScanner.instance.stop();
     super.dispose();
   }
 
