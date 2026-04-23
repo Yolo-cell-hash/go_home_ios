@@ -630,6 +630,13 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
           }
         }
       });
+
+      // If this is an AC power toggle, also send the command to the AC cloud API
+      // so the physical device actually turns on/off (Firebase alone won't control it)
+      if (dbKey == 'ac') {
+        print('[DEBUG] AC toggle detected — sending Power=$newValue to AC API');
+        GodrejAcApiService.instance.setAcParam('Power', newValue);
+      }
     } catch (e) {
       print('[ERROR] Failed to update Firebase: $e');
     }
