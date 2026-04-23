@@ -22,9 +22,9 @@ class CameraScreen extends StatefulWidget {
 class _CameraScreenState extends State<CameraScreen> {
   // Camera configuration - hardcoded for demo
   static const String _deviceId = '6659244802';
-  static const String _deviceName = 'Main Camera';
+  static const String _deviceName = 'The Store';
   static const String _username = 'admin';
-  static const String _password = '';
+  static const String _password = '3effb104786d9c780c67222e0b1f094f';
   static const int _channelCount = 1;
 
   // State
