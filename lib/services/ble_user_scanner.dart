@@ -18,7 +18,7 @@ import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 /// The MAC address (remoteId) of the digital lock to monitor.
 /// On iOS, CoreBluetooth may use a random UUID instead of the real MAC.
 /// If the real MAC is not visible, match by manufacturer data prefix instead.
-const String _lockMacAddress = 'FD:D6:FE:3A:9D:9B';
+const String _lockMacAddress = 'C8:72:0C:8F:27:1A';
 
 /// Scan window duration (seconds)
 const int _scanDurationSec = 6;
@@ -42,11 +42,11 @@ const int _detectionCooldownSec = 10;
 ///
 /// Unknown person IDs (not in this list) are silently ignored.
 const List<Map<String, String>> userIdMappings = [
-  {'personId': '1DCD68F6', 'presetUser': 'jay'},
+  {'personId': '1DCD691B', 'presetUser': 'jay'},
   // Future users — uncomment and fill when IDs are known:
-  // {'personId': 'XXXXXXXX', 'presetUser': 'jinay'},
-  // {'personId': 'XXXXXXXX', 'presetUser': 'keyoor'},
-  {'personId': '1DCD691B', 'presetUser': 'saili'},
+  {'personId': '1DCD691C', 'presetUser': 'sayali'},
+  {'personId': '1DCD691D', 'presetUser': 'Keyoor'},
+  {'personId': '1DCD691E', 'presetUser': 'saili'},
 ];
 
 // ---------------------------------------------------------------------------

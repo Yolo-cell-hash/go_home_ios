@@ -25,6 +25,7 @@ import 'vertical_home/wardrobe_screen.dart';
 import 'vertical_home/light_control_screen.dart';
 import 'vertical_home/fan_control_screen.dart';
 import 'vertical_home/ac_control_screen.dart';
+import 'vertical_home/mood_light_control_screen.dart';
 
 /// Main vertical home screen with snap scrolling pages
 class VerticalHomeScreen extends StatefulWidget {
@@ -56,6 +57,7 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
   StreamSubscription<DatabaseEvent>? _firebaseSubscription;
   StreamSubscription<DatabaseEvent>? _fireAlertSubscription;
   StreamSubscription<DatabaseEvent>? _windowAlertSubscription;
+  StreamSubscription<DatabaseEvent>? _moodLightSubscription;
 
   // Flag to track if initial data has been loaded
   bool _isLoading = true;
@@ -97,33 +99,33 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
   static const List<String> welcomeIconDbKeys = ['door-lock', 'vdb', 'camera'];
 
   // Living room icons (9)
-  // Index: 0=DoorLock, 1=VDB, 2=Camera, 3=Light, 4=Light(grey), 5=Fan, 6=WindowSensor, 7=FireSensor, 8=AC
+  // Index: 0=DoorLock, 1=VDB, 2=Camera, 3=Light, 4=MoodLight, 5=Fan, 6=WindowSensor, 7=FireSensor, 8=AC
   late List<int> _livingRoomStatus = [
     2,
     1,
     2,
     1,
-    0,
-    2,
     1,
     2,
     1,
-  ]; // AC starts as red (off), Firebase will update
+    2,
+    1,
+  ]; // AC starts as red (off), Firebase will update; MoodLight starts red (off)
 
-  // Kitchen icons (6)
+  // Kitchen icons (6) — ALL greyed out
   // Index: 0=WindowSensor, 1=GasSensor, 2=Chimney, 3=Fan, 4=Light(grey), 5=Light
-  late List<int> _kitchenStatus = [2, 1, 0, 1, 0, 2]; // Chimney greyed out
+  late List<int> _kitchenStatus = [0, 0, 0, 0, 0, 0]; // All disabled
 
-  // Bedroom icons (6)
+  // Bedroom icons (6) — ALL greyed out
   // Index: 0=WindowSensor, 1=FireSensor, 2=AC, 3=BedStorage, 4=Light(grey), 5=Wardrobe
   late List<int> _bedroomStatus = [
-    1,
-    2,
-    1,
     0,
     0,
     0,
-  ]; // AC starts as red (off), Firebase will update; BedStorage + Wardrobe greyed out
+    0,
+    0,
+    0,
+  ]; // All disabled
 
   // Control items data for each room (with dbKey for Firebase mapping)
   static const List<Map<String, dynamic>> livingRoomControls = [
@@ -135,7 +137,7 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
     {'icon': 'images/vdb.svg', 'label': 'VDB', 'dbKey': 'vdb'},
     {'icon': 'images/camera.png', 'label': 'Camera', 'dbKey': 'camera'},
     {'icon': CupertinoIcons.lightbulb, 'label': 'Light', 'dbKey': 'light'},
-    {'icon': CupertinoIcons.lightbulb, 'label': 'Light', 'dbKey': null}, // grey
+    {'icon': CupertinoIcons.lightbulb, 'label': 'Mood Light', 'dbKey': 'strip-lights'},
     {'icon': 'images/fan.png', 'label': 'Fan', 'dbKey': 'fan'},
     {
       'icon': 'images/window_sensor.png',
@@ -199,7 +201,9 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
     PresetManager.initDefaults(); // Ensure scene presets exist in SharedPreferences
     _fetchKnownUsers(); // Fetch known users from /presets before profile listener
     _fetchFirebaseState();
+    _fetchMoodLightState();
     _setupFirebaseListener();
+    _setupMoodLightListener();
     _setupProfileListener();
     // Initialize Godrej AC API service (login + auto token refresh)
     GodrejAcApiService.instance.init();
@@ -390,12 +394,46 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
     _handleProfileSelected(userName);
   }
 
+  /// Fetch initial mood light (strip-lights) state from automation-flags
+  Future<void> _fetchMoodLightState() async {
+    try {
+      final snapshot = await _dbRef.child('strip-lights').get();
+      if (snapshot.exists && mounted) {
+        final value = snapshot.value as bool? ?? false;
+        setState(() {
+          _livingRoomStatus[4] = value ? 2 : 1;
+        });
+        print('[DEBUG] Mood light initial state: $value');
+      }
+    } catch (e) {
+      print('[ERROR] Failed to fetch mood light state: $e');
+    }
+  }
+
+  /// Setup real-time listener for mood light (strip-lights) in automation-flags
+  void _setupMoodLightListener() {
+    _moodLightSubscription =
+        _dbRef.child('strip-lights').onValue.listen((event) {
+      if (event.snapshot.exists && mounted) {
+        final value = event.snapshot.value as bool? ?? false;
+        final newStatus = value ? 2 : 1;
+        if (_livingRoomStatus[4] != newStatus) {
+          setState(() {
+            _livingRoomStatus[4] = newStatus;
+          });
+          print('[DEBUG] Mood light updated: $value (status=$newStatus)');
+        }
+      }
+    });
+  }
+
   @override
   void dispose() {
     _firebaseSubscription?.cancel();
     _fireAlertSubscription?.cancel();
     _windowAlertSubscription?.cancel();
     _profileSubscription?.cancel();
+    _moodLightSubscription?.cancel();
     _vibrationTimer?.cancel();
     _pageController.dispose();
     GodrejAcApiService.instance.dispose();
@@ -534,13 +572,15 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
     // Helper to get status from DB value
     int getStatus(bool? value, int currentStatus) {
       if (currentStatus == 0) return 0; // Keep grey items unchanged
+      if (value == null) return currentStatus; // No value -> keep current
       return value == true ? 2 : 1; // true -> green, false -> red
     }
 
     // Update Living Room status
     for (int i = 0; i < livingRoomControls.length; i++) {
       final dbKey = livingRoomControls[i]['dbKey'] as String?;
-      if (dbKey != null && _livingRoomStatus[i] != 0) {
+      // Skip strip-lights — it lives in a separate RTDB and is not in automation-flags
+      if (dbKey != null && dbKey != 'strip-lights' && _livingRoomStatus[i] != 0) {
         final value = data[dbKey] as bool?;
         _livingRoomStatus[i] = getStatus(value, _livingRoomStatus[i]);
         print(
@@ -549,29 +589,11 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
       }
     }
 
-    // Update Kitchen status
-    for (int i = 0; i < kitchenControls.length; i++) {
-      final dbKey = kitchenControls[i]['dbKey'] as String?;
-      if (dbKey != null && _kitchenStatus[i] != 0) {
-        final value = data[dbKey] as bool?;
-        _kitchenStatus[i] = getStatus(value, _kitchenStatus[i]);
-        print(
-          '[DEBUG] Kitchen[$i] ($dbKey) = $value -> status ${_kitchenStatus[i]}',
-        );
-      }
-    }
+    // Kitchen — all greyed out, skip Firebase sync
+    // (kept for reference but no status updates needed)
 
-    // Update Bedroom status
-    for (int i = 0; i < bedroomControls.length; i++) {
-      final dbKey = bedroomControls[i]['dbKey'] as String?;
-      if (dbKey != null && _bedroomStatus[i] != 0) {
-        final value = data[dbKey] as bool?;
-        _bedroomStatus[i] = getStatus(value, _bedroomStatus[i]);
-        print(
-          '[DEBUG] Bedroom[$i] ($dbKey) = $value -> status ${_bedroomStatus[i]}',
-        );
-      }
-    }
+    // Bedroom — all greyed out, skip Firebase sync
+    // (kept for reference but no status updates needed)
 
     // Update Welcome screen icons (door-lock, vdb, camera)
     for (int i = 0; i < welcomeIconDbKeys.length; i++) {
@@ -606,21 +628,9 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
           }
         }
 
-        // Sync Kitchen
-        for (int i = 0; i < kitchenControls.length; i++) {
-          if (kitchenControls[i]['dbKey'] == dbKey && _kitchenStatus[i] != 0) {
-            _kitchenStatus[i] = newStatus;
-            print('[DEBUG] Synced Kitchen[$i] to $newStatus');
-          }
-        }
+        // Kitchen — all greyed out, skip sync
 
-        // Sync Bedroom
-        for (int i = 0; i < bedroomControls.length; i++) {
-          if (bedroomControls[i]['dbKey'] == dbKey && _bedroomStatus[i] != 0) {
-            _bedroomStatus[i] = newStatus;
-            print('[DEBUG] Synced Bedroom[$i] to $newStatus');
-          }
-        }
+        // Bedroom — all greyed out, skip sync
 
         // Sync Welcome screen icons (door-lock, vdb, camera)
         for (int i = 0; i < welcomeIconDbKeys.length; i++) {
@@ -1300,6 +1310,13 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
 
     final dbKey = livingRoomControls[index]['dbKey'] as String?;
 
+    // Mood Light (index 4) — toggle via separate RTDB path
+    if (dbKey == 'strip-lights') {
+      final newValue = _livingRoomStatus[index] == 1;
+      _toggleMoodLight(newValue);
+      return;
+    }
+
     if (dbKey != null) {
       // Current status: red(1) -> set to true, green(2) -> set to false
       final newValue = _livingRoomStatus[index] == 1;
@@ -1314,54 +1331,32 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
     }
   }
 
-  /// Handle kitchen control tap with Firebase sync
-  void _handleKitchenTap(int index) {
-    print('[DEBUG] Kitchen item $index tapped');
-
-    // Show alert for grey (offline) items
-    if (_kitchenStatus[index] == 0) {
-      final deviceName = kitchenControls[index]['label'] as String;
-      _showDeviceOfflineAlert(deviceName);
-      return;
-    }
-
-    final dbKey = kitchenControls[index]['dbKey'] as String?;
-
-    if (dbKey != null) {
-      final newValue = _kitchenStatus[index] == 1;
-      final deviceName = kitchenControls[index]['label'] as String;
-      _handleToggleWithSceneCheck(dbKey, newValue, deviceName);
-    } else {
+  /// Toggle mood light on/off via automation-flags/strip-lights.
+  Future<void> _toggleMoodLight(bool newValue) async {
+    try {
+      await _dbRef.child('strip-lights').set(newValue);
       setState(() {
-        _kitchenToggles[index] = !_kitchenToggles[index];
-        _kitchenStatus[index] = _kitchenStatus[index] == 1 ? 2 : 1;
+        // Update living room status for mood light (index 4)
+        _livingRoomStatus[4] = newValue ? 2 : 1;
       });
+      print('[DEBUG] Mood light toggled to $newValue');
+    } catch (e) {
+      print('[ERROR] Failed to toggle mood light: $e');
     }
   }
 
-  /// Handle bedroom control tap with Firebase sync
+  /// Handle kitchen control tap — all items are greyed out
+  void _handleKitchenTap(int index) {
+    print('[DEBUG] Kitchen item $index tapped (disabled)');
+    final deviceName = kitchenControls[index]['label'] as String;
+    _showDeviceOfflineAlert(deviceName);
+  }
+
+  /// Handle bedroom control tap — all items are greyed out
   void _handleBedroomTap(int index) {
-    print('[DEBUG] Bedroom item $index tapped');
-
-    // Show alert for grey (offline) items
-    if (_bedroomStatus[index] == 0) {
-      final deviceName = bedroomControls[index]['label'] as String;
-      _showDeviceOfflineAlert(deviceName);
-      return;
-    }
-
-    final dbKey = bedroomControls[index]['dbKey'] as String?;
-
-    if (dbKey != null) {
-      final newValue = _bedroomStatus[index] == 1;
-      final deviceName = bedroomControls[index]['label'] as String;
-      _handleToggleWithSceneCheck(dbKey, newValue, deviceName);
-    } else {
-      setState(() {
-        _bedroomToggles[index] = !_bedroomToggles[index];
-        _bedroomStatus[index] = _bedroomStatus[index] == 1 ? 2 : 1;
-      });
-    }
+    print('[DEBUG] Bedroom item $index tapped (disabled)');
+    final deviceName = bedroomControls[index]['label'] as String;
+    _showDeviceOfflineAlert(deviceName);
   }
 
   /// Handle living room control long press for navigation
@@ -1372,7 +1367,7 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
 
     // Navigate to the appropriate screen based on index
     // Index mapping in livingRoomControls:
-    // 0=DoorLock, 1=VDB, 2=Camera, 3=Light, 4=Light(grey), 5=Fan, 6=WindowSensor, 7=FireSensor, 8=AC
+    // 0=DoorLock, 1=VDB, 2=Camera, 3=Light, 4=MoodLight, 5=Fan, 6=WindowSensor, 7=FireSensor, 8=AC
     Widget? targetScreen;
 
     switch (index) {
@@ -1387,6 +1382,9 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
         break;
       case 3: // Light (active)
         targetScreen = const LightControlScreen();
+        break;
+      case 4: // Mood Light
+        targetScreen = const MoodLightControlScreen();
         break;
       case 5: // Fan
         targetScreen = const FanControlScreen();
@@ -1407,69 +1405,18 @@ class _VerticalHomeScreenState extends State<VerticalHomeScreen> {
     _reloadActivePreset();
   }
 
-  /// Handle kitchen control long press for navigation
-  void _handleKitchenLongPress(int index) async {
-    print(
-      '[DEBUG] Kitchen item $index long pressed - navigating to detail screen',
-    );
-
-    // Navigate to the appropriate screen based on index
-    // Index mapping in kitchenControls:
-    // 0=WindowSensor, 1=GasSensor, 2=Chimney, 3=Fan, 4=Light(grey), 5=Light
-    Widget? targetScreen;
-
-    switch (index) {
-      case 3: // Fan
-        targetScreen = const FanControlScreen();
-        break;
-      case 5: // Light (active)
-        targetScreen = const LightControlScreen();
-        break;
-      default:
-        print('[DEBUG] No long press navigation for kitchen index: $index');
-        return;
-    }
-
-    await Navigator.of(
-      context,
-    ).push(CupertinoPageRoute(builder: (context) => targetScreen!));
-
-    // Reload preset after returning — sub-screen may have saved changes
-    _reloadActivePreset();
+  /// Handle kitchen control long press — all items are greyed out
+  void _handleKitchenLongPress(int index) {
+    print('[DEBUG] Kitchen item $index long pressed (disabled)');
+    final deviceName = kitchenControls[index]['label'] as String;
+    _showDeviceOfflineAlert(deviceName);
   }
 
-  /// Handle bedroom control long press for navigation
-  void _handleBedroomLongPress(int index) async {
-    print(
-      '[DEBUG] Bedroom item $index long pressed - navigating to detail screen',
-    );
-
-    // Navigate to the appropriate screen based on index
-    // Index mapping in bedroomControls:
-    // 0=WindowSensor, 1=FireSensor, 2=AC, 3=BedStorage, 4=Light, 5=Wardrobe
-    Widget? targetScreen;
-
-    switch (index) {
-      case 2: // Air Conditioner
-        targetScreen = const AcControlScreen();
-        break;
-      case 3: // Bed Storage
-        targetScreen = const BedStorageScreen();
-        break;
-      case 5: // Wardrobe
-        targetScreen = const WardrobeScreen();
-        break;
-      default:
-        print('[DEBUG] No long press navigation for bedroom index: $index');
-        return;
-    }
-
-    await Navigator.of(
-      context,
-    ).push(CupertinoPageRoute(builder: (context) => targetScreen!));
-
-    // Reload preset after returning — sub-screen may have saved changes
-    _reloadActivePreset();
+  /// Handle bedroom control long press — all items are greyed out
+  void _handleBedroomLongPress(int index) {
+    print('[DEBUG] Bedroom item $index long pressed (disabled)');
+    final deviceName = bedroomControls[index]['label'] as String;
+    _showDeviceOfflineAlert(deviceName);
   }
 
   /// Build page indicator dots
